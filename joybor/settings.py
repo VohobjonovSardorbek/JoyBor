@@ -16,7 +16,8 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
-FRONTEND_URL = "http://localhost:3000"
+# ... existing code ...
+FRONTEND_URL = "http://localhost:3000"  # Or your actual frontend URL
 
 # Application definition
 
@@ -94,7 +95,54 @@ SWAGGER_SETTINGS = {
             'in': 'header',
         }
     },
+    'TAGS_SORTER': 'alpha',
+    'OPERATIONS_SORTER': 'alpha',
+    'DEFAULT_MODEL_RENDERING': 'model',
     'DEFAULT_INFO': 'joybor.urls.schema_view',
+    'DEFAULT_AUTO_SCHEMA_CLASS': 'drf_yasg.inspectors.SwaggerAutoSchema',
+    'DEFAULT_FIELD_INSPECTORS': [
+        'drf_yasg.inspectors.CamelCaseJSONFilter',
+        'drf_yasg.inspectors.ReferencingSerializerInspector',
+        'drf_yasg.inspectors.RelatedFieldInspector',
+        'drf_yasg.inspectors.ChoiceFieldInspector',
+        'drf_yasg.inspectors.FileFieldInspector',
+        'drf_yasg.inspectors.DictFieldInspector',
+        'drf_yasg.inspectors.SimpleFieldInspector',
+        'drf_yasg.inspectors.StringDefaultFieldInspector',
+    ],
+    'DEFAULT_PAGINATOR_INSPECTORS': [
+        'drf_yasg.inspectors.DjangoRestResponsePagination',
+        'drf_yasg.inspectors.CoreAPICompatInspector',
+    ],
+    'VALIDATOR_URL': None,
+    'PERSIST_AUTH': True,
+    'REFETCH_SCHEMA_WITH_AUTH': True,
+    'REFETCH_SCHEMA_ON_LOGOUT': True,
+    'DEFAULT_FILTER_INSPECTORS': [
+        'drf_yasg.inspectors.CoreAPICompatInspector',
+    ],
+    'SECURITY': [
+        {'Bearer': []}
+    ],
+    'TAGS': [
+        {'name': 'User Management', 'description': 'User management operations'},
+        {'name': 'User Profile Management', 'description': 'User profile management operations'},
+        {'name': 'Student Management', 'description': 'Student management operations'},
+        {'name': 'Application Management', 'description': 'Application management operations'},
+        {'name': 'Application Document Management', 'description': 'Application document management operations'},
+        {'name': 'University Management', 'description': 'University management operations'},
+        {'name': 'Picture Management', 'description': 'Picture management operations'},
+        {'name': 'Dormitory Management', 'description': 'Dormitory management operations'},
+        {'name': 'Floor Management', 'description': 'Floor management operations'},
+        {'name': 'Room Type Management', 'description': 'Room type management operations'},
+        {'name': 'Room Facility Management', 'description': 'Room facility management operations'},
+        {'name': 'Room Management', 'description': 'Room management operations'},
+        {'name': 'Room Booking Management', 'description': 'Room booking management operations'},
+        {'name': 'Payment Type Management', 'description': 'Payment type management operations'},
+        {'name': 'Payment Status Management', 'description': 'Payment status management operations'},
+        {'name': 'Payment Transaction Management', 'description': 'Payment transaction management operations'},
+        {'name': 'Subscription Management', 'description': 'Subscription management operations'},
+    ],
 }
 
 MIDDLEWARE = [

@@ -2,6 +2,8 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from .models import (
     University, Picture, Dormitory, Floor, RoomType,
     RoomFacility, Room, RoomBooking
@@ -18,7 +20,12 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+
+@swagger_auto_schema(tags=['University Management'])
 class UniversityViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing universities.
+    """
     queryset = University.objects.all()
     serializer_class = UniversitySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -30,7 +37,12 @@ class UniversityViewSet(viewsets.ModelViewSet):
             return [IsSuperAdmin()]
         return [permissions.IsAuthenticated()]
 
+
+@swagger_auto_schema(tags=['Picture Management'])
 class PictureViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing pictures.
+    """
     queryset = Picture.objects.all()
     serializer_class = PictureSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -41,14 +53,17 @@ class PictureViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Picture.objects.none()
         dormitory_id = self.request.query_params.get('dormitory_id')
         if dormitory_id:
             return Picture.objects.filter(dormitory_id=dormitory_id)
         return Picture.objects.all()
 
+
+@swagger_auto_schema(tags=['Dormitory Management'])
 class DormitoryViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing dormitories.
+    """
     queryset = Dormitory.objects.all()
     serializer_class = DormitorySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -66,8 +81,6 @@ class DormitoryViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Dormitory.objects.none()
         user = self.request.user
         if user.role == User.SUPER_ADMIN:
             return Dormitory.objects.all()
@@ -75,7 +88,12 @@ class DormitoryViewSet(viewsets.ModelViewSet):
             return Dormitory.objects.filter(admin=user)
         return Dormitory.objects.filter(status='active')
 
+
+@swagger_auto_schema(tags=['Floor Management'])
 class FloorViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing floors.
+    """
     queryset = Floor.objects.all()
     serializer_class = FloorSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -93,14 +111,17 @@ class FloorViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Floor.objects.none()
         dormitory_id = self.request.query_params.get('dormitory_id')
         if dormitory_id:
             return Floor.objects.filter(dormitory_id=dormitory_id)
         return Floor.objects.all()
 
+
+@swagger_auto_schema(tags=['Room Type Management'])
 class RoomTypeViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing room types.
+    """
     queryset = RoomType.objects.all()
     serializer_class = RoomTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -112,7 +133,12 @@ class RoomTypeViewSet(viewsets.ModelViewSet):
             return [IsSuperAdmin()]
         return [permissions.IsAuthenticated()]
 
+
+@swagger_auto_schema(tags=['Room Facility Management'])
 class RoomFacilityViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing room facilities.
+    """
     queryset = RoomFacility.objects.all()
     serializer_class = RoomFacilitySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -124,7 +150,12 @@ class RoomFacilityViewSet(viewsets.ModelViewSet):
             return [IsSuperAdmin()]
         return [permissions.IsAuthenticated()]
 
+
+@swagger_auto_schema(tags=['Room Management'])
 class RoomViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing rooms.
+    """
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -142,8 +173,6 @@ class RoomViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Room.objects.none()
         user = self.request.user
         if user.role == User.SUPER_ADMIN:
             return Room.objects.all()
@@ -151,6 +180,27 @@ class RoomViewSet(viewsets.ModelViewSet):
             return Room.objects.filter(dormitory__admin=user)
         return Room.objects.filter(status='available')
 
+    @swagger_auto_schema(
+        operation_description="Book a room",
+        request_body=RoomBookingCreateSerializer,
+        responses={
+            201: openapi.Response(
+                description="Room booked successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'room': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'student': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'start_date': openapi.Schema(type=openapi.TYPE_STRING, format='date'),
+                        'end_date': openapi.Schema(type=openapi.TYPE_STRING, format='date'),
+                        'status': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: "Bad Request"
+        }
+    )
     @action(detail=True, methods=['post'])
     def book(self, request, pk=None):
         room = self.get_object()
@@ -173,7 +223,12 @@ class RoomViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+@swagger_auto_schema(tags=['Room Booking Management'])
 class RoomBookingViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing room bookings.
+    """
     queryset = RoomBooking.objects.all()
     serializer_class = RoomBookingSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -193,8 +248,6 @@ class RoomBookingViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return RoomBooking.objects.none()
         user = self.request.user
         if user.role == User.SUPER_ADMIN:
             return RoomBooking.objects.all()

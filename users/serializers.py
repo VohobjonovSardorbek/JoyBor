@@ -77,6 +77,34 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         validated_data.pop('confirm_password')
+        # Force role to be student for all registrations
+        validated_data['role'] = User.STUDENT
+        return User.objects.create_user(**validated_data)
+
+# Add new serializer for dormitory admin creation
+class DormitoryAdminCreateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+    confirm_password = serializers.CharField(write_only=True, required=True)
+    
+    class Meta:
+        model = User
+        fields = [
+            'username', 'email', 'password', 'confirm_password',
+            'first_name', 'last_name', 'phone_number'
+        ]
+        extra_kwargs = {
+            'email': {'required': True}
+        }
+    
+    def validate(self, attrs):
+        if attrs['password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({"password": "Password fields didn't match."})
+        return attrs
+    
+    def create(self, validated_data):
+        validated_data.pop('confirm_password')
+        # Force role to be dormitory admin
+        validated_data['role'] = User.DORMITORY_ADMIN
         return User.objects.create_user(**validated_data)
 
 class UserLoginSerializer(serializers.Serializer):

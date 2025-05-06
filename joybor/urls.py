@@ -22,6 +22,27 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
+# Define tags for better organization
+tags = [
+    {'name': 'User Management', 'description': 'User management operations'},
+    {'name': 'User Profile Management', 'description': 'User profile management operations'},
+    {'name': 'Student Management', 'description': 'Student management operations'},
+    {'name': 'Application Management', 'description': 'Application management operations'},
+    {'name': 'Application Document Management', 'description': 'Application document management operations'},
+    {'name': 'University Management', 'description': 'University management operations'},
+    {'name': 'Picture Management', 'description': 'Picture management operations'},
+    {'name': 'Dormitory Management', 'description': 'Dormitory management operations'},
+    {'name': 'Floor Management', 'description': 'Floor management operations'},
+    {'name': 'Room Type Management', 'description': 'Room type management operations'},
+    {'name': 'Room Facility Management', 'description': 'Room facility management operations'},
+    {'name': 'Room Management', 'description': 'Room management operations'},
+    {'name': 'Room Booking Management', 'description': 'Room booking management operations'},
+    {'name': 'Payment Type Management', 'description': 'Payment type management operations'},
+    {'name': 'Payment Status Management', 'description': 'Payment status management operations'},
+    {'name': 'Payment Transaction Management', 'description': 'Payment transaction management operations'},
+    {'name': 'Subscription Management', 'description': 'Subscription management operations'},
+]
+
 # Swagger schema
 schema_view = get_schema_view(
    openapi.Info(
@@ -34,6 +55,12 @@ schema_view = get_schema_view(
    ),
    public=True,
    permission_classes=(permissions.AllowAny,),
+   patterns=[
+       path('api/users/', include('users.urls')),
+       path('api/student/', include('student.urls')),
+       path('api/payment/', include('payment.urls')),
+       path('api/dormitory/', include('dormitory.urls')),
+   ],
 )
 
 urlpatterns = [

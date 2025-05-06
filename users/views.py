@@ -8,15 +8,22 @@ from django.conf import settings
 from django.utils.crypto import get_random_string
 from django.utils import timezone
 from datetime import timedelta
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from .models import User, UserProfile
 from .serializers import (
     UserSerializer, UserProfileSerializer, UserRegistrationSerializer,
     UserLoginSerializer, PasswordChangeSerializer, PasswordResetRequestSerializer,
-    PasswordResetConfirmSerializer
+    PasswordResetConfirmSerializer, DormitoryAdminCreateSerializer
 )
 from .permissions import IsSuperAdmin, IsDormitoryAdmin, IsStudent, IsSelfOrSuperAdmin
 
+
+@swagger_auto_schema(tags=['User Management'])
 class UserViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing users.
+    """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]  # Allow registration and login without auth
@@ -26,7 +33,24 @@ class UserViewSet(viewsets.ModelViewSet):
             return [permissions.IsAuthenticated()]
         elif self.action in ['create', 'register', 'login', 'reset_password_request']:
             return [permissions.AllowAny()]
+        elif self.action == 'create_dormitory_admin':
+            return [IsSuperAdmin()]
         return [permissions.IsAuthenticated()]
+
+    def get_serializer_class(self):
+        if self.action == 'register':
+            return UserRegistrationSerializer
+        elif self.action == 'create_dormitory_admin':
+            return DormitoryAdminCreateSerializer
+        elif self.action == 'login':
+            return UserLoginSerializer
+        elif self.action == 'reset_password_request':
+            return PasswordResetRequestSerializer
+        elif self.action == 'change_password':
+            return PasswordChangeSerializer
+        elif self.action == 'reset_password_confirm':
+            return PasswordResetConfirmSerializer
+        return UserSerializer
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -40,6 +64,24 @@ class UserViewSet(viewsets.ModelViewSet):
             return User.objects.filter(role=User.STUDENT)
         return User.objects.filter(id=user.id)
 
+    @swagger_auto_schema(
+        operation_description="Register a new user",
+        request_body=UserRegistrationSerializer,
+        responses={
+            201: openapi.Response(
+                description="User registered successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'user': openapi.Schema(type=openapi.TYPE_OBJECT),
+                        'refresh': openapi.Schema(type=openapi.TYPE_STRING),
+                        'access': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: "Bad Request"
+        }
+    )
     @action(detail=False, methods=['post'])
     def register(self, request):
         serializer = UserRegistrationSerializer(data=request.data)
@@ -53,6 +95,25 @@ class UserViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(
+        operation_description="Login user",
+        request_body=UserLoginSerializer,
+        responses={
+            200: openapi.Response(
+                description="Login successful",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'user': openapi.Schema(type=openapi.TYPE_OBJECT),
+                        'refresh': openapi.Schema(type=openapi.TYPE_STRING),
+                        'access': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            401: "Invalid credentials",
+            400: "Bad Request"
+        }
+    )
     @action(detail=False, methods=['post'])
     def login(self, request):
         serializer = UserLoginSerializer(data=request.data)
@@ -74,6 +135,22 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(
+        operation_description="Change user password",
+        request_body=PasswordChangeSerializer,
+        responses={
+            200: openapi.Response(
+                description="Password changed successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'status': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: "Bad Request"
+        }
+    )
     @action(detail=False, methods=['post'])
     def change_password(self, request):
         serializer = PasswordChangeSerializer(data=request.data)
@@ -89,6 +166,23 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'status': 'password changed'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(
+        operation_description="Request password reset",
+        request_body=PasswordResetRequestSerializer,
+        responses={
+            200: openapi.Response(
+                description="Reset email sent",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'status': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            404: "User not found",
+            400: "Bad Request"
+        }
+    )
     @action(detail=False, methods=['post'])
     def reset_password_request(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
@@ -100,7 +194,7 @@ class UserViewSet(viewsets.ModelViewSet):
                 user.reset_password_token = token
                 user.reset_password_token_expires = timezone.now() + timedelta(hours=24)
                 user.save()
-                
+
                 reset_link = f"{settings.FRONTEND_URL}/reset-password/{token}"
                 send_mail(
                     'Password Reset Request',
@@ -117,6 +211,22 @@ class UserViewSet(viewsets.ModelViewSet):
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @swagger_auto_schema(
+        operation_description="Confirm password reset",
+        request_body=PasswordResetConfirmSerializer,
+        responses={
+            200: openapi.Response(
+                description="Password reset successful",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'status': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: "Invalid or expired token"
+        }
+    )
     @action(detail=False, methods=['post'])
     def reset_password_confirm(self, request, token):
         try:
@@ -138,7 +248,44 @@ class UserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+    @swagger_auto_schema(
+        operation_description="Create a dormitory admin account",
+        request_body=DormitoryAdminCreateSerializer,
+        responses={
+            201: openapi.Response(
+                description="Dormitory admin created successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'user': openapi.Schema(type=openapi.TYPE_OBJECT),
+                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                    }
+                )
+            ),
+            400: "Bad Request"
+        }
+    )
+    @action(detail=False, methods=['post'])
+    def create_dormitory_admin(self, request):
+        """
+        Endpoint for super admins to create dormitory admin accounts.
+        Only accessible by super admins.
+        """
+        serializer = DormitoryAdminCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                'user': UserSerializer(user).data,
+                'message': 'Dormitory admin created successfully'
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@swagger_auto_schema(tags=['User Profile Management'])
 class UserProfileViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing user profiles.
+    """
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]

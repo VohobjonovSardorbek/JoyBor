@@ -2,6 +2,8 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from .models import Student, Application, ApplicationDocument
 from .serializers import (
     StudentSerializer, ApplicationSerializer, ApplicationDocumentSerializer,
@@ -10,7 +12,11 @@ from .serializers import (
 from users.models import User
 
 
+@swagger_auto_schema(tags=['Student Management'])
 class StudentViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing students.
+    """
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -25,13 +31,42 @@ class StudentViewSet(viewsets.ModelViewSet):
             return Student.objects.filter(dormitory__user=user)
         return Student.objects.all()
 
+    @swagger_auto_schema(
+        operation_description="Get current student profile",
+        responses={
+            200: openapi.Response(
+                description="Student profile retrieved successfully",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'user': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'student_id': openapi.Schema(type=openapi.TYPE_STRING),
+                        'first_name': openapi.Schema(type=openapi.TYPE_STRING),
+                        'last_name': openapi.Schema(type=openapi.TYPE_STRING),
+                        'email': openapi.Schema(type=openapi.TYPE_STRING, format='email'),
+                        'phone': openapi.Schema(type=openapi.TYPE_STRING),
+                        'address': openapi.Schema(type=openapi.TYPE_STRING),
+                        'created_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
+                        'updated_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
+                    }
+                )
+            ),
+            404: "Student not found"
+        }
+    )
     @action(detail=False, methods=['get'])
     def me(self, request):
         student = get_object_or_404(Student, user=request.user)
         serializer = self.get_serializer(student)
         return Response(serializer.data)
 
+
+@swagger_auto_schema(tags=['Application Management'])
 class ApplicationViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing applications.
+    """
     queryset = Application.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
@@ -62,7 +97,12 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
+
+@swagger_auto_schema(tags=['Application Document Management'])
 class ApplicationDocumentViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing application documents.
+    """
     queryset = ApplicationDocument.objects.all()
     serializer_class = ApplicationDocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
