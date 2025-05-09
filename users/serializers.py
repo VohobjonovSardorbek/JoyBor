@@ -25,9 +25,17 @@ class UserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # Only show role to superusers and superadmins
-        if self.context['request'].user.is_superuser or self.context['request'].user.is_super_admin:
-            data['role'] = instance.role
+        request = self.context.get('request')
+        
+        # Only show sensitive fields if user is superuser or super_admin
+        if request and (request.user.is_superuser or getattr(request.user, 'is_super_admin', False)):
+            return data
+        
+        # Remove sensitive fields for regular users
+        sensitive_fields = ['is_superuser', 'is_staff', 'is_super_admin', 'is_dormitory_admin']
+        for field in sensitive_fields:
+            data.pop(field, None)
+        
         return data
 
 class UserRegistrationSerializer(serializers.ModelSerializer):

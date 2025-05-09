@@ -20,6 +20,7 @@ from .permissions import (
     IsSuperAdmin, IsDormitoryAdmin, IsStudent,
     IsSelfOrSuperAdmin, CanManageRoles, CanCreateDormitoryAdmin
 )
+from rest_framework.permissions import AllowAny
 
 
 @swagger_auto_schema(tags=["Accounts"])
@@ -96,16 +97,16 @@ class UserViewSet(viewsets.ModelViewSet):
             400: "Bad Request"
         }
     )
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
     def register(self, request):
-        serializer = UserRegistrationSerializer(data=request.data)
+        serializer = UserSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             user = serializer.save()
             refresh = RefreshToken.for_user(user)
             return Response({
-                'user': UserSerializer(user).data,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
+                'user': UserSerializer(user, context={'request': request}).data,
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

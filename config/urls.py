@@ -5,14 +5,15 @@ from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from django.views.generic import RedirectView
 
 schema_view = get_schema_view(
     openapi.Info(
         title="Dormitory Management API",
         default_version='v1',
-        description="API for managing dormitories, rooms, and student applications",
-        terms_of_service="https://www.google.com/policies/terms/",
-        contact=openapi.Contact(email="contact@dormitory.com"),
+        description="API for managing dormitories, rooms, and bookings",
+        terms_of_service="https://www.example.com/terms/",
+        contact=openapi.Contact(email="contact@example.com"),
         license=openapi.License(name="BSD License"),
     ),
     public=True,
@@ -20,6 +21,9 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    # Redirect root to swagger docs
+    path('', RedirectView.as_view(url='/swagger/', permanent=False)),
+    
     path('admin/', admin.site.urls),
     path('api/', include('users.urls')),
     path('api/', include('dormitory.urls')),
@@ -28,8 +32,9 @@ urlpatterns = [
     
     # Swagger URLs
     path('swagger<format>/', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    path('docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),  # Alias for /swagger/
 ]
 
 if settings.DEBUG:
