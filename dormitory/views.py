@@ -26,14 +26,14 @@ pagination_params = [
     openapi.Parameter(
         'page',
         openapi.IN_QUERY,
-        description="Page number",
+        description="Page number for pagination",
         type=openapi.TYPE_INTEGER,
         default=1
     ),
     openapi.Parameter(
         'page_size',
         openapi.IN_QUERY,
-        description="Number of results per page",
+        description="Number of results per page (default: 10, max: 100)",
         type=openapi.TYPE_INTEGER,
         default=10
     )
@@ -43,7 +43,7 @@ ordering_params = [
     openapi.Parameter(
         'ordering',
         openapi.IN_QUERY,
-        description="Order by field (prefix with '-' for descending order)",
+        description="Order by field (prefix with '-' for descending order). Available fields: name, created_at, status",
         type=openapi.TYPE_STRING,
         required=False
     )
@@ -53,7 +53,31 @@ search_params = [
     openapi.Parameter(
         'search',
         openapi.IN_QUERY,
-        description="Search term",
+        description="Search term to filter results by name, address, or description",
+        type=openapi.TYPE_STRING,
+        required=False
+    )
+]
+
+filter_params = [
+    openapi.Parameter(
+        'name',
+        openapi.IN_QUERY,
+        description="Filter by dormitory name",
+        type=openapi.TYPE_STRING,
+        required=False
+    ),
+    openapi.Parameter(
+        'university',
+        openapi.IN_QUERY,
+        description="Filter by university ID",
+        type=openapi.TYPE_INTEGER,
+        required=False
+    ),
+    openapi.Parameter(
+        'status',
+        openapi.IN_QUERY,
+        description="Filter by dormitory status (active/inactive)",
         type=openapi.TYPE_STRING,
         required=False
     )
@@ -61,7 +85,16 @@ search_params = [
 
 @swagger_auto_schema(
     tags=["Universities"],
-    manual_parameters=pagination_params + ordering_params + search_params
+    operation_description="Get list of universities with pagination, search, and ordering",
+    manual_parameters=pagination_params + ordering_params + search_params,
+    responses={
+        200: openapi.Response(
+            description="List of universities",
+            schema=UniversitySerializer(many=True)
+        ),
+        401: "Unauthorized",
+        403: "Forbidden"
+    }
 )
 class UniversityViewSet(viewsets.ModelViewSet):
     """
@@ -96,7 +129,16 @@ class UniversityViewSet(viewsets.ModelViewSet):
 
 @swagger_auto_schema(
     tags=["Dormitories"],
-    manual_parameters=pagination_params + ordering_params + search_params
+    operation_description="Get list of dormitories with pagination, search, ordering, and filtering",
+    manual_parameters=pagination_params + ordering_params + search_params + filter_params,
+    responses={
+        200: openapi.Response(
+            description="List of dormitories",
+            schema=DormitorySerializer(many=True)
+        ),
+        401: "Unauthorized",
+        403: "Forbidden"
+    }
 )
 class DormitoryViewSet(viewsets.ModelViewSet):
     """
@@ -219,7 +261,45 @@ class RoomFacilityViewSet(viewsets.ModelViewSet):
 
 @swagger_auto_schema(
     tags=["Rooms"],
-    manual_parameters=pagination_params + ordering_params + search_params
+    operation_description="Get list of rooms with pagination, search, ordering, and filtering",
+    manual_parameters=pagination_params + ordering_params + search_params + [
+        openapi.Parameter(
+            'dormitory',
+            openapi.IN_QUERY,
+            description="Filter by dormitory ID",
+            type=openapi.TYPE_INTEGER,
+            required=False
+        ),
+        openapi.Parameter(
+            'floor',
+            openapi.IN_QUERY,
+            description="Filter by floor ID",
+            type=openapi.TYPE_INTEGER,
+            required=False
+        ),
+        openapi.Parameter(
+            'room_type',
+            openapi.IN_QUERY,
+            description="Filter by room type ID",
+            type=openapi.TYPE_INTEGER,
+            required=False
+        ),
+        openapi.Parameter(
+            'status',
+            openapi.IN_QUERY,
+            description="Filter by room status (available/full/partially_filled)",
+            type=openapi.TYPE_STRING,
+            required=False
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="List of rooms",
+            schema=RoomSerializer(many=True)
+        ),
+        401: "Unauthorized",
+        403: "Forbidden"
+    }
 )
 class RoomViewSet(viewsets.ModelViewSet):
     """
@@ -259,7 +339,38 @@ class RoomViewSet(viewsets.ModelViewSet):
 
 @swagger_auto_schema(
     tags=["Bookings"],
-    manual_parameters=pagination_params + ordering_params + search_params
+    operation_description="Get list of room bookings with pagination, search, ordering, and filtering",
+    manual_parameters=pagination_params + ordering_params + search_params + [
+        openapi.Parameter(
+            'room',
+            openapi.IN_QUERY,
+            description="Filter by room ID",
+            type=openapi.TYPE_INTEGER,
+            required=False
+        ),
+        openapi.Parameter(
+            'student',
+            openapi.IN_QUERY,
+            description="Filter by student ID",
+            type=openapi.TYPE_INTEGER,
+            required=False
+        ),
+        openapi.Parameter(
+            'status',
+            openapi.IN_QUERY,
+            description="Filter by booking status (pending/approved/rejected)",
+            type=openapi.TYPE_STRING,
+            required=False
+        )
+    ],
+    responses={
+        200: openapi.Response(
+            description="List of room bookings",
+            schema=RoomBookingSerializer(many=True)
+        ),
+        401: "Unauthorized",
+        403: "Forbidden"
+    }
 )
 class RoomBookingViewSet(viewsets.ModelViewSet):
     """
