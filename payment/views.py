@@ -15,36 +15,79 @@ from .permissions import IsSuperAdmin, IsDormitoryAdmin, IsStudent
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-@swagger_auto_schema(tags=['Payment Type Management'])
+@swagger_auto_schema(
+    tags=['/api/payment/payment-types/'],
+    operation_description="Payment type management endpoints",
+    responses={
+        200: openapi.Response(
+            description="Success",
+            schema=PaymentTypeSerializer
+        )
+    }
+)
 class PaymentTypeViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing payment types.
     """
     queryset = PaymentType.objects.all()
     serializer_class = PaymentTypeSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [IsSuperAdmin()]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return PaymentType.objects.none()
         return PaymentType.objects.filter(is_active=True)
 
-@swagger_auto_schema(tags=['Payment Status Management'])
+@swagger_auto_schema(
+    tags=['/api/payment/payment-statuses/'],
+    operation_description="Payment status management endpoints",
+    responses={
+        200: openapi.Response(
+            description="Success",
+            schema=PaymentStatusSerializer
+        )
+    }
+)
 class PaymentStatusViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing payment statuses.
     """
     queryset = PaymentStatus.objects.all()
     serializer_class = PaymentStatusSerializer
-    permission_classes = [permissions.IsAuthenticated, IsSuperAdmin]
+    permission_classes = [permissions.IsAuthenticated]
 
-@swagger_auto_schema(tags=['Payment Transaction Management'])
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [IsSuperAdmin()]
+
+@swagger_auto_schema(
+    tags=['/api/payment/transactions/'],
+    operation_description="Payment transaction management endpoints",
+    responses={
+        200: openapi.Response(
+            description="Success",
+            schema=PaymentTransactionSerializer
+        )
+    }
+)
 class PaymentTransactionViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing payment transactions.
     """
     queryset = PaymentTransaction.objects.all()
+    serializer_class = PaymentTransactionSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [IsSuperAdmin()]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -57,74 +100,65 @@ class PaymentTransactionViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return PaymentTransaction.objects.none()
         user = self.request.user
-        if user.role == User.STUDENT:
-            return PaymentTransaction.objects.filter(student=user)
-        elif user.role == User.DORMITORY_ADMIN:
+        if user.is_super_admin:
+            return PaymentTransaction.objects.all()
+        elif user.is_dormitory_admin:
             return PaymentTransaction.objects.filter(dormitory__admin=user)
-        return PaymentTransaction.objects.all()
+        return PaymentTransaction.objects.filter(student__user=user)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
     @swagger_auto_schema(
-        operation_description="Get user's payment transactions",
+        operation_description="Process a payment",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['amount', 'payment_type'],
+            properties={
+                'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
+                'payment_type': openapi.Schema(type=openapi.TYPE_INTEGER),
+            }
+        ),
         responses={
-            200: openapi.Response(
-                description="List of payment transactions",
-                schema=openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(
-                        type=openapi.TYPE_OBJECT,
-                        properties={
-                            'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                            'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
-                            'payment_type': openapi.Schema(type=openapi.TYPE_OBJECT),
-                            'status': openapi.Schema(type=openapi.TYPE_OBJECT),
-                            'created_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
-                        }
-                    )
-                )
-            )
-        }
-    )
-    @action(detail=False, methods=['get'])
-    def my_payments(self, request):
-        if request.user.role == User.STUDENT:
-            payments = PaymentTransaction.objects.filter(student=request.user)
-        elif request.user.role == User.DORMITORY_ADMIN:
-            payments = PaymentTransaction.objects.filter(dormitory__admin=request.user)
-        else:
-            payments = PaymentTransaction.objects.all()
-        
-        serializer = self.get_serializer(payments, many=True)
-        return Response(serializer.data)
-
-    @swagger_auto_schema(
-        operation_description="Update payment transaction status",
-        request_body=PaymentTransactionUpdateSerializer,
-        responses={
-            200: openapi.Response(
-                description="Payment status updated successfully",
+            201: openapi.Response(
+                description="Payment processed successfully",
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
                         'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                        'status': openapi.Schema(type=openapi.TYPE_OBJECT),
-                        'updated_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
+                        'student': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
+                        'payment_type': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'status': openapi.Schema(type=openapi.TYPE_STRING),
+                        'created_at': openapi.Schema(type=openapi.TYPE_STRING, format='date-time'),
                     }
                 )
             ),
             400: "Bad Request"
         }
     )
-    @action(detail=True, methods=['post'])
-    def update_status(self, request, pk=None):
-        payment = self.get_object()
-        serializer = PaymentTransactionUpdateSerializer(payment, data=request.data, partial=True)
+    @action(detail=False, methods=['post'])
+    def process_payment(self, request):
+        serializer = PaymentTransactionSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            transaction = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @swagger_auto_schema(
+        operation_description="Get user's payment history",
+        responses={
+            200: openapi.Response(
+                description="Payment history retrieved successfully",
+                schema=PaymentTransactionSerializer(many=True)
+            )
+        }
+    )
+    @action(detail=False, methods=['get'])
+    def my_payments(self, request):
+        transactions = self.get_queryset()
+        serializer = self.get_serializer(transactions, many=True)
+        return Response(serializer.data)
 
     @swagger_auto_schema(
         operation_description="Get payment statistics",
@@ -256,13 +290,28 @@ class PaymentTransactionViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(overdue_payments, many=True)
         return Response(serializer.data)
 
-@swagger_auto_schema(tags=['Subscription Management'])
+@swagger_auto_schema(
+    tags=['/api/payment/subscriptions/'],
+    operation_description="Subscription management endpoints",
+    responses={
+        200: openapi.Response(
+            description="Success",
+            schema=SubscriptionSerializer
+        )
+    }
+)
 class SubscriptionViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing subscriptions.
     """
     queryset = Subscription.objects.all()
+    serializer_class = SubscriptionSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [IsSuperAdmin()]
 
     def get_serializer_class(self):
         if self.action == 'create':
@@ -275,9 +324,11 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return Subscription.objects.none()
         user = self.request.user
-        if user.role == User.DORMITORY_ADMIN:
+        if user.is_super_admin:
+            return Subscription.objects.all()
+        elif user.is_dormitory_admin:
             return Subscription.objects.filter(dormitory__admin=user)
-        return Subscription.objects.all()
+        return Subscription.objects.filter(student__user=user)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -437,11 +488,16 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
                 schema=openapi.Schema(
                     type=openapi.TYPE_OBJECT,
                     properties={
-                        'message': openapi.Schema(type=openapi.TYPE_STRING),
+                        'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'student': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'dormitory': openapi.Schema(type=openapi.TYPE_INTEGER),
+                        'start_date': openapi.Schema(type=openapi.TYPE_STRING, format='date'),
+                        'end_date': openapi.Schema(type=openapi.TYPE_STRING, format='date'),
+                        'status': openapi.Schema(type=openapi.TYPE_STRING),
                     }
                 )
             ),
-            404: "Subscription not found"
+            400: "Bad Request"
         }
     )
     @action(detail=True, methods=['post'])
@@ -449,4 +505,5 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         subscription = self.get_object()
         subscription.status = 'cancelled'
         subscription.save()
-        return Response({"message": "Subscription cancelled successfully"})
+        serializer = self.get_serializer(subscription)
+        return Response(serializer.data)

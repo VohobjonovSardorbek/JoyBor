@@ -81,7 +81,7 @@ class RoomCreateSerializer(serializers.ModelSerializer):
         fields = [
             'dormitory', 'floor', 'room_type', 'room_number',
             'facilities', 'status', 'current_occupancy',
-            'monthly_price', 'room_type_category', 'equipment'
+            'monthly_price'
         ]
 
 class RoomBookingSerializer(serializers.ModelSerializer):

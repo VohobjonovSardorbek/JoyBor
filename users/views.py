@@ -16,24 +16,28 @@ from .serializers import (
     UserLoginSerializer, PasswordChangeSerializer, PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer, DormitoryAdminCreateSerializer
 )
-from .permissions import IsSuperAdmin, IsDormitoryAdmin, IsStudent, IsSelfOrSuperAdmin
+from .permissions import (
+    IsSuperAdmin, IsDormitoryAdmin, IsStudent,
+    IsSelfOrSuperAdmin, CanManageRoles, CanCreateDormitoryAdmin
+)
 
 
-@swagger_auto_schema(tags=['User Management'])
+@swagger_auto_schema(tags=["Accounts"])
 class UserViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing users.
     """
     queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [permissions.AllowAny]  # Allow registration and login without auth
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'update', 'partial_update', 'destroy']:
-            return [permissions.IsAuthenticated()]
-        elif self.action in ['create', 'register', 'login', 'reset_password_request']:
+        if self.action in ['list', 'retrieve']:
             return [permissions.AllowAny()]
         elif self.action == 'create_dormitory_admin':
+            return [CanCreateDormitoryAdmin()]
+        elif self.action in ['update', 'partial_update']:
+            return [IsSelfOrSuperAdmin()]
+        elif self.action in ['destroy']:
             return [IsSuperAdmin()]
         return [permissions.IsAuthenticated()]
 
@@ -56,16 +60,26 @@ class UserViewSet(viewsets.ModelViewSet):
         if getattr(self, 'swagger_fake_view', False):
             return User.objects.none()
         user = self.request.user
-        if not user.is_authenticated:
-            return User.objects.none()
-        if user.role == User.SUPER_ADMIN:
+        if user.is_super_admin:
             return User.objects.all()
-        elif user.role == User.DORMITORY_ADMIN:
-            return User.objects.filter(role=User.STUDENT)
+        elif user.is_dormitory_admin:
+            return User.objects.filter(dormitory__admin=user)
         return User.objects.filter(id=user.id)
 
+    def update(self, request, *args, **kwargs):
+        # Remove role from request data to prevent role manipulation
+        if 'role' in request.data:
+            request.data.pop('role')
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        # Remove role from request data to prevent role manipulation
+        if 'role' in request.data:
+            request.data.pop('role')
+        return super().partial_update(request, *args, **kwargs)
+
     @swagger_auto_schema(
-        operation_description="Register a new user",
+        operation_description="Register a new user (student only)",
         request_body=UserRegistrationSerializer,
         responses={
             201: openapi.Response(
@@ -249,7 +263,7 @@ class UserViewSet(viewsets.ModelViewSet):
             )
 
     @swagger_auto_schema(
-        operation_description="Create a dormitory admin account",
+        operation_description="Create a dormitory admin account (super admin only)",
         request_body=DormitoryAdminCreateSerializer,
         responses={
             201: openapi.Response(
@@ -267,10 +281,6 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['post'])
     def create_dormitory_admin(self, request):
-        """
-        Endpoint for super admins to create dormitory admin accounts.
-        Only accessible by super admins.
-        """
         serializer = DormitoryAdminCreateSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -281,24 +291,62 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@swagger_auto_schema(tags=['User Profile Management'])
+@swagger_auto_schema(
+    tags=['User Profile Management'],
+    operation_description="User profile management endpoints",
+    responses={
+        200: openapi.Response(
+            description="Success",
+            schema=UserProfileSerializer
+        )
+    }
+)
 class UserProfileViewSet(viewsets.ModelViewSet):
     """
     API endpoint for managing user profiles.
     """
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_permissions(self):
-        if self.action in ['list']:
-            return [IsSuperAdmin()]
-        return [IsSelfOrSuperAdmin()]
+    permission_classes = [permissions.IsAuthenticated, IsSelfOrSuperAdmin]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return UserProfile.objects.none()
         user = self.request.user
-        if user.role == User.SUPER_ADMIN:
+        if user.is_super_admin:
             return UserProfile.objects.all()
         return UserProfile.objects.filter(user=user)
+
+@swagger_auto_schema(tags=["Accounts"])
+class RegisterView(generics.CreateAPIView):
+    """
+    API endpoint for user registration.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserRegistrationSerializer
+    permission_classes = [permissions.AllowAny]
+
+@swagger_auto_schema(tags=["Accounts"])
+class LoginView(generics.CreateAPIView):
+    """
+    API endpoint for user login.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserLoginSerializer
+    permission_classes = [permissions.AllowAny]
+
+@swagger_auto_schema(tags=["Accounts"])
+class LogoutView(generics.GenericAPIView):
+    """
+    API endpoint for user logout.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh_token"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except Exception:
+            return Response(status=status.HTTP_400_BAD_REQUEST)

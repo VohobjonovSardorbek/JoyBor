@@ -148,12 +148,12 @@ class Room(models.Model):
         ('full', _('Full')),
         ('under_maintenance', _('Under maintenance'))
     )
-
-    ROOM_TYPE_CHOICES = (
-        ('standard', _('Standard')),
-        ('improved', _('Improved')),
-        ('vip', _('VIP'))
-    )
+    #
+    # ROOM_TYPE_CHOICES = (
+    #     ('standard', _('Standard')),
+    #     ('improved', _('Improved')),
+    #     ('vip', _('VIP'))
+    # )
 
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE, related_name='rooms')
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name='rooms')
@@ -168,13 +168,13 @@ class Room(models.Model):
     )
     current_occupancy = models.PositiveSmallIntegerField(default=0, verbose_name=_('Current occupancy'))
     monthly_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Monthly price'))
-    room_type_category = models.CharField(
-        max_length=20,
-        choices=ROOM_TYPE_CHOICES,
-        default='standard',
-        verbose_name=_('Room type category')
-    )
-    equipment = models.JSONField(default=dict, blank=True, verbose_name=_('Equipment'))
+    # room_type_category = models.CharField(
+    #     max_length=20,
+    #     choices=ROOM_TYPE_CHOICES,
+    #     default='standard',
+    #     verbose_name=_('Room type category')
+    # )
+    # equipment = models.JSONField(default=dict, blank=True, verbose_name=_('Equipment'))
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

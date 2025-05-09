@@ -54,7 +54,7 @@ class RoomFacilityAdmin(admin.ModelAdmin):
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
     list_display = ('room_number', 'dormitory', 'floor', 'room_type', 'status', 'current_occupancy')
-    list_filter = ('dormitory', 'floor', 'room_type', 'status', 'room_type_category')
+    list_filter = ('dormitory', 'floor', 'room_type', 'status')
     search_fields = ('room_number', 'dormitory__name')
     ordering = ('dormitory', 'floor', 'room_number')
 

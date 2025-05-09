@@ -92,7 +92,7 @@ class UserAPITest(APITestCase):
             users = data['results']
         else:
             users = data
-        self.assertEqual(len(users), active_users)
+    self.assertEqual(len(users), active_users)
 
     def test_user_detail(self):
         self.client.force_authenticate(user=self.student)

@@ -12,7 +12,6 @@ from datetime import date, timedelta
 
 User = get_user_model()
 
-
 class DormitoryModelTest(TestCase):
     def setUp(self):
         # Create test data
@@ -23,7 +22,7 @@ class DormitoryModelTest(TestCase):
             contact_info='test@university.com',
             website='https://testuniversity.com'
         )
-
+        
         self.super_admin = User.objects.create_superuser(
             username='admin',
             email='admin@example.com',
@@ -32,7 +31,7 @@ class DormitoryModelTest(TestCase):
             first_name='Admin',
             last_name='User'
         )
-
+        
         self.dormitory_admin = User.objects.create_user(
             username='dormadmin',
             email='dormadmin@example.com',
@@ -41,7 +40,7 @@ class DormitoryModelTest(TestCase):
             first_name='Dorm',
             last_name='Admin'
         )
-
+        
         self.student = User.objects.create_user(
             username='student',
             email='student@example.com',
@@ -50,7 +49,7 @@ class DormitoryModelTest(TestCase):
             first_name='Test',
             last_name='Student'
         )
-
+        
         self.dormitory = Dormitory.objects.create(
             name='Test Dormitory',
             address='Test Address',
@@ -93,7 +92,7 @@ class DormitoryModelTest(TestCase):
         )
         self.assertEqual(str(floor), 'Floor 1 - Test Dormitory')
         self.assertEqual(floor.gender_type, 'male')
-
+        
         # Test unique constraint
         with self.assertRaises(Exception):
             Floor.objects.create(
@@ -142,7 +141,7 @@ class DormitoryModelTest(TestCase):
             name='WiFi',
             description='High-speed internet'
         )
-
+        
         room = Room.objects.create(
             dormitory=self.dormitory,
             floor=floor,
@@ -154,7 +153,7 @@ class DormitoryModelTest(TestCase):
             equipment={'bed': 2, 'desk': 2}
         )
         room.facilities.add(facility)
-
+        
         self.assertEqual(str(room), 'Room 101 - Test Dormitory')
         self.assertEqual(room.status, 'available')
         self.assertEqual(room.current_occupancy, 0)
@@ -184,7 +183,7 @@ class DormitoryModelTest(TestCase):
             status='available',
             monthly_price=1000
         )
-
+        
         booking = RoomBooking.objects.create(
             room=room,
             student=self.student,
@@ -192,20 +191,19 @@ class DormitoryModelTest(TestCase):
             end_date=date.today() + timedelta(days=30),
             status='Pending'
         )
-
+        
         self.assertEqual(str(booking), f'Booking for 101 by student')
         self.assertEqual(booking.status, 'Pending')
-
+        
         # Test status change
         booking.status = 'Approved'
         booking.save()
         self.assertEqual(booking.status, 'Approved')
 
-
 class DormitoryAPITest(APITestCase):
     def setUp(self):
         self.client = APIClient()
-
+        
         # Create test users
         self.super_admin = User.objects.create_superuser(
             username='admin',
@@ -215,7 +213,7 @@ class DormitoryAPITest(APITestCase):
             first_name='Admin',
             last_name='User'
         )
-
+        
         self.dormitory_admin = User.objects.create_user(
             username='dormadmin',
             email='dormadmin@example.com',
@@ -224,7 +222,7 @@ class DormitoryAPITest(APITestCase):
             first_name='Dorm',
             last_name='Admin'
         )
-
+        
         self.student = User.objects.create_user(
             username='student',
             email='student@example.com',
@@ -233,7 +231,7 @@ class DormitoryAPITest(APITestCase):
             first_name='Test',
             last_name='Student'
         )
-
+        
         # Create test university
         self.university = University.objects.create(
             name='Test University',
@@ -242,7 +240,7 @@ class DormitoryAPITest(APITestCase):
             contact_info='test@university.com',
             website='https://testuniversity.com'
         )
-
+        
         # Create test dormitory
         self.dormitory = Dormitory.objects.create(
             name='Test Dormitory',
@@ -265,12 +263,8 @@ class DormitoryAPITest(APITestCase):
         url = reverse('university-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        data = response.data
-        # Handle paginated and non-paginated responses
-        if isinstance(data, dict) and 'results' in data:
-            universities = [u for u in data['results'] if u['name'] == self.university.name]
-        else:
-            universities = [u for u in data if u['name'] == self.university.name]
+        # Only count the university created in this test
+        universities = [u for u in response.data if u['name'] == self.university.name]
         self.assertEqual(len(universities), 1)
 
     def test_dormitory_creation(self):
@@ -301,7 +295,7 @@ class DormitoryAPITest(APITestCase):
     def test_room_booking(self):
         """Test room booking API endpoint"""
         self.client.force_authenticate(user=self.student)
-
+        
         # Create floor
         floor = Floor.objects.create(
             dormitory=self.dormitory,
@@ -310,7 +304,7 @@ class DormitoryAPITest(APITestCase):
             description='Test Floor',
             gender_type='male'
         )
-
+        
         # Create room type
         room_type = RoomType.objects.create(
             name='Standard',
@@ -319,7 +313,7 @@ class DormitoryAPITest(APITestCase):
             description='Standard Room',
             is_active=True
         )
-
+        
         # Create room
         room = Room.objects.create(
             dormitory=self.dormitory,
@@ -331,7 +325,7 @@ class DormitoryAPITest(APITestCase):
             room_type_category='standard',
             equipment={'bed': 2, 'desk': 2}
         )
-
+        
         # Test booking
         url = reverse('room-book', args=[room.id])
         data = {
@@ -348,7 +342,7 @@ class DormitoryAPITest(APITestCase):
     def test_room_booking_approval(self):
         """Test room booking approval API endpoint"""
         self.client.force_authenticate(user=self.dormitory_admin)
-
+        
         # Create floor
         floor = Floor.objects.create(
             dormitory=self.dormitory,
@@ -357,7 +351,7 @@ class DormitoryAPITest(APITestCase):
             description='Test Floor',
             gender_type='male'
         )
-
+        
         # Create room type
         room_type = RoomType.objects.create(
             name='Standard',
@@ -366,7 +360,7 @@ class DormitoryAPITest(APITestCase):
             description='Standard Room',
             is_active=True
         )
-
+        
         # Create room
         room = Room.objects.create(
             dormitory=self.dormitory,
@@ -378,7 +372,7 @@ class DormitoryAPITest(APITestCase):
             room_type_category='standard',
             current_occupancy=0
         )
-
+        
         # Create booking
         booking = RoomBooking.objects.create(
             room=room,
@@ -387,7 +381,7 @@ class DormitoryAPITest(APITestCase):
             end_date=date.today() + timedelta(days=30),
             status='Pending'
         )
-
+        
         # Test approval
         url = reverse('roombooking-detail', args=[booking.id])
         data = {
@@ -396,11 +390,11 @@ class DormitoryAPITest(APITestCase):
         }
         response = self.client.patch(url, data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
+        
         # Refresh objects from database
         booking.refresh_from_db()
         room.refresh_from_db()
-
+        
         self.assertEqual(booking.status, 'Approved')
         self.assertEqual(room.status, 'partially_filled')
         self.assertEqual(room.current_occupancy, 1)
