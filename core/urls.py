@@ -9,7 +9,8 @@ from main.views import DormitoryListAPIView, UniversityListAPIView, DormitoryCre
     UniversityCreateAPIView, DormitoryDetailAPIView, FloorListAPIView, FloorCreateAPIView, FloorDetailAPIView, \
     RoomListAPIView, RoomCreateAPIView, RoomDetailAPIView, StudentListAPIView, StudentCreateAPIView, \
     StudentDetailAPIView, ApplicationListAPIView, ApplicationCreateAPIView, ApplicationDetailAPIView, \
-    PaymentListAPIView, PaymentCreateAPIView, PaymentDetailAPIView
+    PaymentListAPIView, PaymentCreateAPIView, PaymentDetailAPIView, UserListAPIView, UserDetailAPIView, \
+    UserCreateAPIView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -31,6 +32,9 @@ urlpatterns = [
 ]
 
 urlpatterns += [
+    path('users/', UserListAPIView.as_view(), name='user-list'),
+    path('user/create/', UserCreateAPIView.as_view(), name='user-create'),
+    path('users/<int:pk>/', UserDetailAPIView.as_view(), name='user-detail'),
     path('universities/', UniversityListAPIView.as_view(), name='university-list'),
     path('university/create/', UniversityCreateAPIView.as_view(), name='university-create'),
     path('universities/<int:pk>/', UniversityDetailApiView.as_view(), name='university-detail'),
