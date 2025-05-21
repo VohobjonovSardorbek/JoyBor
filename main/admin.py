@@ -1,3 +1,67 @@
 from django.contrib import admin
+from .models import User, University, Dormitory, Floor, Room, Student, Application, Payment
 
-# Register your models here.
+
+class UserAdmin(admin.ModelAdmin):
+    list_display = ('username', 'email', 'role')
+    search_fields = ['username', 'email']
+    list_filter = ['role']
+
+admin.site.register(User, UserAdmin)
+
+
+class UniversityAdmin(admin.ModelAdmin):
+    list_display = ('name', 'address')
+    search_fields = ['name']
+
+admin.site.register(University, UniversityAdmin)
+
+
+class DormitoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'address', 'university', 'admin')
+    search_fields = ['name', 'address']
+    list_filter = ['university']
+
+admin.site.register(Dormitory, DormitoryAdmin)
+
+
+class FloorAdmin(admin.ModelAdmin):
+    list_display = ('name', 'floor', 'dormitory')
+    search_fields = ['floor', 'room']
+    list_filter = ['dormitory']
+
+admin.site.register(Floor, FloorAdmin)
+
+
+class RoomAdmin(admin.ModelAdmin):
+    list_display = ('floor', 'name')
+    search_fields = ['floor', 'name']
+    list_filter = ['floor', 'capacity', 'status']
+
+admin.site.register(Room, RoomAdmin)
+
+
+class StudentAdmin(admin.ModelAdmin):
+    list_display = ('name', 'user', 'university', 'dormitory')
+    search_fields = ['name', 'dormitory']
+    list_filter = ['university', 'dormitory']
+
+admin.site.register(Student, StudentAdmin)
+
+
+class ApplicationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'university', 'dormitory', 'phone')
+    search_fields = ['name', 'university', 'dormitory']
+    list_filter = ['university', 'dormitory', 'status']
+
+admin.site.register(Application, ApplicationAdmin)
+
+
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('student', 'amount', 'dormitory')
+    search_fields = ['student', 'dormitory']
+    list_filter = ['dormitory', 'status']
+
+admin.site.register(Payment, PaymentAdmin)
+
+

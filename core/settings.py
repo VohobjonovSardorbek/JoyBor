@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-=5%junkucgsvnl+#v8(f$6styr015$gx7*6@d=q-j@6ku!p3s('
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -78,16 +78,19 @@ TEMPLATES = [
 WSGI_APPLICATION = 'core.wsgi.application'
 
 from datetime import timedelta
+
 SIMPLE_JWT = {
-"ACCESS_TOKEN_LIFETIME": timedelta(days=30),
-"REFRESH_TOKEN_LIFETIME": timedelta(days=180)
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=180)
 }
 
 REST_FRAMEWORK = {
- 'DEFAULT_AUTHENTICATION_CLASSES': (
- 'rest_framework_simplejwt.authentication.JWTAuthentication',
-)
-
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
 }
 
 SWAGGER_SETTINGS = {
@@ -150,7 +153,17 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+if DEBUG:
+    STATICFILES_DIRS = [BASE_DIR / 'static']
+
+else:
+    STATIC_ROOT = BASE_DIR / 'static'
+
+MEDIA_URL ='media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+AUTH_USER_MODEL = 'main.User'
