@@ -1,11 +1,11 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, University, Dormitory, Floor, Room, Student, Application, Payment
 
-
-class UserAdmin(admin.ModelAdmin):
-    list_display = ('username', 'email', 'role')
+class UserAdmin(BaseUserAdmin):
+    list_display = ('username', 'email', 'role', 'is_active', 'is_staff')
     search_fields = ['username', 'email']
-    list_filter = ['role']
+    list_filter = ['role', 'is_active']
 
 admin.site.register(User, UserAdmin)
 
