@@ -66,7 +66,7 @@ class DormitorySerializer(serializers.ModelSerializer):
 class FloorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Floor
-        fields = ['id', 'name', 'floor', 'description', 'gender']
+        fields = ['id', 'name', 'gender']
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -95,7 +95,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = '__all__'
+        fields = ['id','name' , 'floor', 'capacity', 'status']
 
 
 class StudentSafeSerializer(serializers.ModelSerializer):
@@ -123,6 +123,8 @@ class StudentSerializer(serializers.ModelSerializer):
 
         if room.currentOccupancy >= room.capacity:
             raise serializers.ValidationError("Bu xona to'lgan, unga talaba qo'sha olmaysiz")
+        room.currentOccupancy += 1
+        room.save()
         return attrs
 
     def create(self, validated_data):

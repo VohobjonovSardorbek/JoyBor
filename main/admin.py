@@ -26,7 +26,7 @@ admin.site.register(Dormitory, DormitoryAdmin)
 
 
 class FloorAdmin(admin.ModelAdmin):
-    list_display = ('name', 'floor', 'dormitory')
+    list_display = ('name', 'dormitory')
     search_fields = ['floor', 'room']
     list_filter = ['dormitory']
 

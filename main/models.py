@@ -13,6 +13,21 @@ class User(AbstractUser):
         return self.username
 
 
+class Province(models.Model):
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
+
+
+class District(models.Model):
+    name = models.CharField(max_length=255)
+    province = models.ForeignKey(Province, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
+
+
 class University(models.Model):
     name = models.CharField(max_length=120)
     address = models.CharField(max_length=255)
@@ -35,6 +50,7 @@ class Dormitory(models.Model):
     description = models.TextField(blank=True, null=True)
     admin = models.ForeignKey(User, on_delete=models.CASCADE)
     photo = models.ImageField(blank=True, null=True)
+    # is_active = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = 'Dormitory'
@@ -46,9 +62,7 @@ class Dormitory(models.Model):
 
 class Floor(models.Model):
     name = models.CharField(max_length=120)
-    floor = models.IntegerField()
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
-    description = models.TextField(blank=True, null=True)
     gender = models.CharField(choices=(('female', 'female'), ('male', 'male')), max_length=20, default='male')
 
     class Meta:
@@ -62,9 +76,8 @@ class Floor(models.Model):
 class Room(models.Model):
     name = models.CharField(max_length=120)
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE)
-    description = models.TextField(blank=True, null=True)
     capacity = models.IntegerField()
-    currentOccupancy = models.IntegerField()
+    currentOccupancy = models.IntegerField(default=0)
     status = models.CharField(choices=(('AVAILABLE', 'AVAILABLE'), ('PARTIALLY_OCCUPIED', 'PARTIALLY_OCCUPIED'),
                                        ('FULLY_OCCUPIED', 'FULLY_OCCUPIED')), max_length=20)
 
