@@ -7,6 +7,13 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ['username', 'email']
     list_filter = ['role', 'is_active']
 
+    fieldsets = BaseUserAdmin.fieldsets + (
+        (None, {'fields': ('role',)}),
+    )
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        (None, {'fields': ('role',)}),
+    )
+
 admin.site.register(User, UserAdmin)
 
 
