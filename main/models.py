@@ -50,6 +50,7 @@ class Dormitory(models.Model):
     description = models.TextField(blank=True, null=True)
     admin = models.ForeignKey(User, on_delete=models.CASCADE)
     photo = models.ImageField(blank=True, null=True)
+
     # is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -79,7 +80,7 @@ class Room(models.Model):
     capacity = models.IntegerField()
     currentOccupancy = models.IntegerField(default=0)
     status = models.CharField(choices=(('AVAILABLE', 'AVAILABLE'), ('PARTIALLY_OCCUPIED', 'PARTIALLY_OCCUPIED'),
-                                       ('FULLY_OCCUPIED', 'FULLY_OCCUPIED')), max_length=20)
+                                       ('FULLY_OCCUPIED', 'FULLY_OCCUPIED')), max_length=20, default='AVAILABLE')
 
     class Meta:
         verbose_name = 'Room'
@@ -91,20 +92,17 @@ class Room(models.Model):
 
 class Student(models.Model):
     name = models.CharField(max_length=120)
-    last_name = models.CharField(max_length=120, blank=True, null=True) # yangi
-    middle_name = models.CharField(max_length=120, blank=True, null=True) # yangi
+    last_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
+    middle_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    province = models.ForeignKey(Province, on_delete=models.CASCADE, default=1) # yangi
-    district = models.ForeignKey(District, on_delete=models.CASCADE, default=1) # yangi
-    # university = models.ForeignKey(University, on_delete=models.CASCADE)
+    province = models.ForeignKey(Province, on_delete=models.CASCADE, default=1)  # yangi
+    district = models.ForeignKey(District, on_delete=models.CASCADE, default=1)  # yangi
     faculty = models.CharField(max_length=120)
-    direction = models.CharField(max_length=120, blank=True, null=True) # yangi
-    # course = models.IntegerField()
+    direction = models.CharField(max_length=120, blank=True, null=True)  # yangi
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
-    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1) # yangi
-    room = models.ForeignKey(Room, on_delete=models.CASCADE)
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1, related_name='students')  # yangi
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students')
     phone = models.IntegerField()
-    # passport = models.IntegerField()
 
     class Meta:
         verbose_name = 'Student'

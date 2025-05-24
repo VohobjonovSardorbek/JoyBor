@@ -107,7 +107,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ['id','name' , 'floor', 'capacity', 'status']
+        fields = ['id','name' , 'floor', 'capacity']
 
 
 class StudentSafeSerializer(serializers.ModelSerializer):
@@ -139,8 +139,6 @@ class StudentSerializer(serializers.ModelSerializer):
 
         if room.currentOccupancy >= room.capacity:
             raise serializers.ValidationError("Bu xona to'lgan, unga talaba qo'sha olmaysiz")
-        room.currentOccupancy += 1
-        room.save()
         return attrs
 
     def create(self, validated_data):
@@ -154,7 +152,21 @@ class StudentSerializer(serializers.ModelSerializer):
 
         validated_data['dormitory'] = dormitory
 
-        return super().create(validated_data)
+        student =  super().create(validated_data)
+
+        room = student.room
+        room.currentOccupancy = room.students.count()
+
+        if room.currentOccupancy == 0:
+            room.status = 'AVAILABLE'
+        elif room.currentOccupancy < room.capacity:
+            room.status = 'PARTIALLY_OCCUPIED'
+        else:
+            room.status = 'FULLY_OCCUPIED'
+
+        room.save()
+
+        return student
 
 
 class ApplicationSafeSerializer(serializers.ModelSerializer):

@@ -228,6 +228,21 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
             return Student.objects.filter(dormitory=dormitory)
         return Student.objects.none()
 
+    def perform_destroy(self, instance):
+        room = instance.room
+        super().perform_destroy(instance)
+
+        room.currentOccupancy = room.students.count()
+
+        if room.currentOccupancy == 0:
+            room.status = 'AVAILABLE'
+        elif room.currentOccupancy < room.capacity:
+            room.status = 'PARTIALLY_OCCUPIED'
+        else:
+            room.status = 'FULLY_OCCUPIED'
+
+        room.save()
+
 
 class ApplicationListAPIView(ListAPIView):
     serializer_class = ApplicationSafeSerializer
