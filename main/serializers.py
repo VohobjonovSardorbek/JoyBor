@@ -27,6 +27,18 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+class ProvinceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Province
+        fields = '__all__'
+
+
+class DistrictSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = District
+        fields = '__all__'
+
+
 class UniversitySerializer(serializers.ModelSerializer):
     class Meta:
         model = University
@@ -100,23 +112,27 @@ class RoomSerializer(serializers.ModelSerializer):
 
 class StudentSafeSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    university = UniversitySerializer(read_only=True)
+    province = ProvinceSerializer(read_only=True)
+    district = DistrictSerializer(read_only=True)
     dormitory = DormitorySafeSerializer(read_only=True)
+    floor = FloorSerializer(read_only=True)
     room = RoomSafeSerializer(read_only=True)
 
     class Meta:
         model = Student
-        fields = ['id', 'name', 'user', 'university', 'faculty', 'course', 'dormitory', 'room', 'phone', 'passport']
+        fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty', 'direction', 'dormitory', 'floor', 'room', 'phone']
 
 
 class StudentSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.filter(role='student'), write_only=True)
-    university = serializers.PrimaryKeyRelatedField(queryset=University.objects.all(), write_only=True)
+    province = serializers.PrimaryKeyRelatedField(queryset=Province.objects.all(), write_only=True)
+    district = serializers.PrimaryKeyRelatedField(queryset=District.objects.all(), write_only=True)
+    floor = serializers.PrimaryKeyRelatedField(queryset=Floor.objects.all(), write_only=True)
     room = serializers.PrimaryKeyRelatedField(queryset=Room.objects.all(), write_only=True)
 
     class Meta:
         model = Student
-        fields = ['id', 'name', 'user', 'university', 'faculty', 'course', 'room', 'phone', 'passport']
+        fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty', 'direction', 'floor', 'room', 'phone']
 
     def validate(self, attrs):
         room = attrs.get('room')

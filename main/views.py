@@ -207,6 +207,7 @@ class StudentCreateAPIView(CreateAPIView):
 
         dormitory = get_object_or_404(Dormitory, admin=self.request.user)
         floors = Floor.objects.filter(dormitory=dormitory)
+        serializer.fields['floor'].queryset = Floor.objects.filter(dormitory=dormitory)
         serializer.fields['room'].queryset = Room.objects.filter(floor__in=floors)
         serializer.fields['user'].queryset = User.objects.filter(role='student')
         return serializer

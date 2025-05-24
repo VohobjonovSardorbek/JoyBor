@@ -49,9 +49,9 @@ admin.site.register(Room, RoomAdmin)
 
 
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'university', 'dormitory')
+    list_display = ('name', 'user', 'dormitory')
     search_fields = ['name', 'dormitory']
-    list_filter = ['university', 'dormitory']
+    list_filter = ['dormitory', 'floor']
 
 admin.site.register(Student, StudentAdmin)
 

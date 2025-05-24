@@ -91,14 +91,20 @@ class Room(models.Model):
 
 class Student(models.Model):
     name = models.CharField(max_length=120)
+    last_name = models.CharField(max_length=120, blank=True, null=True) # yangi
+    middle_name = models.CharField(max_length=120, blank=True, null=True) # yangi
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    university = models.ForeignKey(University, on_delete=models.CASCADE)
+    province = models.ForeignKey(Province, on_delete=models.CASCADE, default=1) # yangi
+    district = models.ForeignKey(District, on_delete=models.CASCADE, default=1) # yangi
+    # university = models.ForeignKey(University, on_delete=models.CASCADE)
     faculty = models.CharField(max_length=120)
-    course = models.IntegerField()
+    direction = models.CharField(max_length=120, blank=True, null=True) # yangi
+    # course = models.IntegerField()
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1) # yangi
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
     phone = models.IntegerField()
-    passport = models.IntegerField()
+    # passport = models.IntegerField()
 
     class Meta:
         verbose_name = 'Student'
