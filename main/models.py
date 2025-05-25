@@ -107,6 +107,7 @@ class Student(models.Model):
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True) #yangi
     discount = models.CharField(max_length=255, blank=True, null=True) #yangi
     social_status = models.CharField(max_length=255, blank=True, null=True) #yangi
+    accepted_date = models.DateField(blank=True, null=True)
 
     class Meta:
         verbose_name = 'Student'
@@ -140,7 +141,7 @@ class Application(models.Model):
 
 
 class Payment(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='payments')
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
     amount = models.IntegerField()

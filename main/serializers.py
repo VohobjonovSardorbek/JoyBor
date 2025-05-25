@@ -94,12 +94,19 @@ class FloorSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class StudentShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = ['id', 'name', 'last_name']
+
+
 class RoomSafeSerializer(serializers.ModelSerializer):
     floor = FloorSerializer(read_only=True)
+    students = StudentShortSerializer(read_only=True, many=True)
 
     class Meta:
         model = Room
-        fields = '__all__'
+        fields = ['id', 'name', 'floor', 'capacity', 'currentOccupancy', 'gender', 'status', 'students']
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -107,7 +114,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ['id','name' , 'floor', 'capacity']
+        fields = ['id', 'name', 'floor', 'capacity']
 
     def create(self, validated_data):
         floor = validated_data.get('floor')
@@ -117,6 +124,12 @@ class RoomSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class PaymentShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'amount', 'date', 'status']
+
+
 class StudentSafeSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     province = ProvinceSerializer(read_only=True)
@@ -124,11 +137,13 @@ class StudentSafeSerializer(serializers.ModelSerializer):
     dormitory = DormitorySafeSerializer(read_only=True)
     floor = FloorSerializer(read_only=True)
     room = RoomSafeSerializer(read_only=True)
+    payments = PaymentShortSerializer(read_only=True, many=True)
+
 
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty',
-                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status']
+                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status', 'payments', 'accepted_date']
 
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -137,11 +152,12 @@ class StudentSerializer(serializers.ModelSerializer):
     district = serializers.PrimaryKeyRelatedField(queryset=District.objects.all(), write_only=True)
     floor = serializers.PrimaryKeyRelatedField(queryset=Floor.objects.all(), write_only=True)
     room = serializers.PrimaryKeyRelatedField(queryset=Room.objects.all(), write_only=True)
+    picture = serializers.ImageField(required=False)
 
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty',
-                  'direction', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status']
+                  'direction', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status', 'accepted_date']
 
     def validate(self, attrs):
         room = attrs.get('room')
@@ -161,7 +177,7 @@ class StudentSerializer(serializers.ModelSerializer):
 
         validated_data['dormitory'] = dormitory
 
-        student =  super().create(validated_data)
+        student = super().create(validated_data)
 
         room = student.room
         room.currentOccupancy = room.students.count()
