@@ -1,4 +1,6 @@
 from rest_framework import serializers
+from rest_framework.fields import SerializerMethodField
+
 from .models import *
 
 
@@ -127,7 +129,7 @@ class RoomSerializer(serializers.ModelSerializer):
 class PaymentShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        fields = ['id', 'amount', 'date', 'status']
+        fields = ['id', 'amount', 'method', 'paid_date', 'valid_until', 'comment']
 
 
 class StudentSafeSerializer(serializers.ModelSerializer):
@@ -138,12 +140,16 @@ class StudentSafeSerializer(serializers.ModelSerializer):
     floor = FloorSerializer(read_only=True)
     room = RoomSafeSerializer(read_only=True)
     payments = PaymentShortSerializer(read_only=True, many=True)
-
+    total_payment = SerializerMethodField()
 
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty',
-                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status', 'payments', 'accepted_date']
+                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status',
+                  'payments', 'total_payment', 'accepted_date']
+
+    def get_total_payment(self, obj):
+        return sum(p.amount for p in obj.payments.filter(status='APPROVED'))
 
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -221,7 +227,7 @@ class PaymentSafeSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
         extra_kwargs = {
-            'date': {
+            'paid_date': {
                 'read_only': True,
             }
         }
@@ -229,12 +235,11 @@ class PaymentSafeSerializer(serializers.ModelSerializer):
 
 class PaymentSerializer(serializers.ModelSerializer):
     student = serializers.PrimaryKeyRelatedField(queryset=Student.objects.all(), write_only=True)
-    room = serializers.PrimaryKeyRelatedField(queryset=Room.objects.all(), write_only=True)
 
     class Meta:
         model = Payment
-        fields = ['id', 'student', 'room', 'amount', 'date', 'paymentType', 'status']
-        read_only_fields = ['date']
+        fields = ['id', 'student', 'amount', 'paid_date', 'valid_until', 'method', 'status', 'comment']
+        read_only_fields = ['paid_date']
 
     def create(self, validated_data):
         request = self.context.get('request')

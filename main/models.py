@@ -143,12 +143,13 @@ class Application(models.Model):
 class Payment(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='payments')
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
-    room = models.ForeignKey(Room, on_delete=models.CASCADE)
     amount = models.IntegerField()
-    date = models.DateField(auto_now_add=True)
-    paymentType = models.CharField(choices=(('Cash', 'Cash'), ('Card', 'Card')), max_length=20)
+    paid_date = models.DateField(auto_now_add=True)
+    valid_until = models.DateField(blank=True, null=True) #yangi
+    method = models.CharField(choices=(('Cash', 'Cash'), ('Card', 'Card')), max_length=20)
     status = models.CharField(choices=(('PENDING', 'PENDING'), ('APPROVED', 'APPROVED'), ('CANCELLED', 'CANCELLED')),
                               max_length=20)
+    comment = models.TextField(blank=True, null=True) # yangi
 
     class Meta:
         verbose_name = 'Payment'
