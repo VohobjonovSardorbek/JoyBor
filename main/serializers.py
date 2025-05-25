@@ -109,6 +109,13 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = ['id','name' , 'floor', 'capacity']
 
+    def create(self, validated_data):
+        floor = validated_data.get('floor')
+        if floor:
+            validated_data['gender'] = floor.gender
+
+        return super().create(validated_data)
+
 
 class StudentSafeSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
@@ -120,7 +127,8 @@ class StudentSafeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty', 'direction', 'dormitory', 'floor', 'room', 'phone']
+        fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty',
+                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status']
 
 
 class StudentSerializer(serializers.ModelSerializer):
@@ -132,7 +140,8 @@ class StudentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty', 'direction', 'floor', 'room', 'phone']
+        fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty',
+                  'direction', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status']
 
     def validate(self, attrs):
         room = attrs.get('room')

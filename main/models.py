@@ -79,6 +79,7 @@ class Room(models.Model):
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE)
     capacity = models.IntegerField()
     currentOccupancy = models.IntegerField(default=0)
+    gender = models.CharField(choices=(('female', 'female'), ('male', 'male')), max_length=20, default='male')
     status = models.CharField(choices=(('AVAILABLE', 'AVAILABLE'), ('PARTIALLY_OCCUPIED', 'PARTIALLY_OCCUPIED'),
                                        ('FULLY_OCCUPIED', 'FULLY_OCCUPIED')), max_length=20, default='AVAILABLE')
 
@@ -103,6 +104,9 @@ class Student(models.Model):
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1, related_name='students')  # yangi
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students')
     phone = models.IntegerField()
+    picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True) #yangi
+    discount = models.CharField(max_length=255, blank=True, null=True) #yangi
+    social_status = models.CharField(max_length=255, blank=True, null=True) #yangi
 
     class Meta:
         verbose_name = 'Student'

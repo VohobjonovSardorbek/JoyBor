@@ -133,8 +133,6 @@ class FloorDetailAPIView(RetrieveUpdateDestroyAPIView):
 class RoomListAPIView(ListAPIView):
     serializer_class = RoomSafeSerializer
     permission_classes = [IsAdminOrDormitoryAdmin]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['floor']
 
     @swagger_auto_schema(
         manual_parameters=[
