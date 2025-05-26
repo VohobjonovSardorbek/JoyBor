@@ -145,7 +145,7 @@ class StudentSafeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty',
-                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status',
+                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'tarif', 'imtiyoz',
                   'payments', 'total_payment', 'accepted_date']
 
     def get_total_payment(self, obj):
@@ -163,7 +163,7 @@ class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'user', 'province', 'district', 'faculty',
-                  'direction', 'floor', 'room', 'phone', 'picture', 'discount', 'social_status', 'accepted_date']
+                  'direction', 'floor', 'room', 'phone', 'picture', 'tarif', 'imtiyoz', 'accepted_date']
 
     def validate(self, attrs):
         room = attrs.get('room')

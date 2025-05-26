@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission
 from .models import *
+from rest_framework.exceptions import PermissionDenied
 
 class IsStudent(BasePermission):
     def has_permission(self, request, view):
@@ -9,12 +10,27 @@ class IsAdmin(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.is_superuser
 
+# class IsDormitoryAdmin(BasePermission):
+#     def has_permission(self, request, view):
+#         return (
+#             request.user.is_authenticated and
+#             request.user.role == 'admin' and
+#             Dormitory.objects.filter(admin=request.user).exists()
+#         )
+
 class IsDormitoryAdmin(BasePermission):
     def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated and
-            Dormitory.objects.filter(admin=request.user).exists()
-        )
+        if not request.user.is_authenticated:
+            return False
+
+        if request.user.role == 'admin':
+            has_dormitory = Dormitory.objects.filter(admin=request.user).exists()
+            if not has_dormitory:
+                raise PermissionDenied("Sizda yotoqxona mavjud emas.")
+            return True
+
+        return False
+
 
 class IsOwnerOrIsAdmin(BasePermission):
     def has_object_permission(self, request, view, obj):

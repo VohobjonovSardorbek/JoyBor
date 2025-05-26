@@ -20,7 +20,7 @@ class UserListAPIView(ListAPIView):
             return User.objects.none()
 
         user = self.request.user
-        if user.role == 'admin':
+        if user.is_superuser:
             return User.objects.all()
         else:
             return User.objects.filter(id=user.id)
@@ -40,14 +40,14 @@ class UserDetailAPIView(RetrieveUpdateDestroyAPIView):
         user = self.request.user
         if getattr(self, 'swagger_fake_view', False):
             return User.objects.none()
-        if user.role == 'admin':
+        if user.is_superuser:
             return User.objects.all()
         else:
             return User.objects.filter(id=user.id)
 
     def perform_destroy(self, instance):
-        if self.request.user.role != 'admin':
-            raise PermissionDenied("Faqat admin foydalanuvchi o'chira oladi")
+        if self.request.user.is_superuser:
+            raise PermissionDenied("Faqat superadmin foydalanuvchi o'chira oladi")
         instance.delete()
 
 
@@ -87,8 +87,8 @@ class DormitoryDetailAPIView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsOwnerOrIsAdmin]
 
     def perform_destroy(self, instance):
-        if self.request.user.role != 'admin':
-            raise PermissionDenied('Faqat admin yotoqxona o\'chira oladi')
+        if self.request.user.is_superuser:
+            raise PermissionDenied('Faqat superadmin yotoqxona o\'chira oladi')
         instance.delete()
 
 
@@ -100,7 +100,7 @@ class FloorListAPIView(ListAPIView):
         if getattr(self, 'swagger_fake_view', False):
             return Floor.objects.none()
         user = self.request.user
-        if user.role == 'admin':
+        if user.is_superuser:
             return Floor.objects.all()
         elif Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
@@ -122,7 +122,7 @@ class FloorDetailAPIView(RetrieveUpdateDestroyAPIView):
         if getattr(self, 'swagger_fake_view', False):
             return Floor.objects.none()
         user = self.request.user
-        if user.role == 'admin':
+        if user.is_superuser:
             return Floor.objects.all()
         elif Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
@@ -154,7 +154,7 @@ class RoomListAPIView(ListAPIView):
 
         queryset = Room.objects.none()
 
-        if user.role == 'admin':
+        if user.is_superuser:
             queryset = Room.objects.all()
         elif Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
@@ -201,7 +201,7 @@ class RoomDetailAPIView(RetrieveUpdateDestroyAPIView):
         if getattr(self, 'swagger_fake_view', False):
             return Room.objects.none()
         user = self.request.user
-        if user.role == 'admin':
+        if user.is_superuser:
             return Room.objects.all()
         elif Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
@@ -219,7 +219,7 @@ class StudentListAPIView(ListAPIView):
             return Student.objects.none()
 
         user = self.request.user
-        if user.role == 'admin':
+        if user.is_superuser:
             return Student.objects.all()
         elif Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
@@ -257,7 +257,7 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
             return Student.objects.none()
 
         user = self.request.user
-        if user.role == 'admin':
+        if user.is_superuser:
             return Student.objects.all()
         elif Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
@@ -289,7 +289,7 @@ class ApplicationListAPIView(ListAPIView):
             return Application.objects.none()
         user = self.request.user
 
-        if user.role == 'admin':
+        if user.is_superuser:
             return Application.objects.all()
 
         elif Dormitory.objects.filter(admin=user).exists():
@@ -313,9 +313,8 @@ class ApplicationDetailAPIView(RetrieveUpdateDestroyAPIView):
             return Application.objects.none()
         user = self.request.user
 
-        if user.role == 'admin':
+        if user.is_superuser:
             return Application.objects.all()
-
 
         elif Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
@@ -332,9 +331,8 @@ class PaymentListAPIView(ListAPIView):
             return Application.objects.none()
         user = self.request.user
 
-        if user.role == 'admin':
+        if user.is_superuser:
             return Payment.objects.all()
-
 
         elif Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
@@ -369,7 +367,7 @@ class PaymentDetailAPIView(RetrieveUpdateDestroyAPIView):
             return Application.objects.none()
         user = self.request.user
 
-        if user.role == 'admin':
+        if user.is_superuser:
             return Payment.objects.all()
 
 

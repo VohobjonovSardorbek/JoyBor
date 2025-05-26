@@ -105,8 +105,28 @@ class Student(models.Model):
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students')
     phone = models.IntegerField()
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True) #yangi
-    discount = models.CharField(max_length=255, blank=True, null=True) #yangi
-    social_status = models.CharField(max_length=255, blank=True, null=True) #yangi
+    TARIF_CHOICES = (
+        ('Nogiron', 'Nogiron'),
+        ("Boquvchisini yo'qotgan", "Boquvchisini yo'qotgan"),
+        ('Yotoqxonada faol', 'Yotoqxonada faol'),
+        ('Boshqa', 'Boshqa'),
+        ('Oddiy', 'Oddiy'),
+    )
+    tarif = models.CharField(max_length=120, choices=TARIF_CHOICES, default='Oddiy') #yangi
+    IMTIYOZ_CHOICES = (
+        ('0%', '0%'),
+        ('10%', '10%'),
+        ('20%', '20%'),
+        ('30%', '30%'),
+        ('40%', '40%'),
+        ('50%', '50%'),
+        ('60%', '60%'),
+        ('70%', '70%'),
+        ('80%', '80%'),
+        ('90%', '90%'),
+        ('100%', '100%'),
+    )
+    imtiyoz = models.CharField(max_length=120, choices=IMTIYOZ_CHOICES, default='0%')
     accepted_date = models.DateField(blank=True, null=True)
 
     class Meta:
