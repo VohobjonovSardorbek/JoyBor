@@ -181,12 +181,13 @@ class RoomCreateAPIView(CreateAPIView):
     queryset = Room.objects.all()
 
     def get_serializer(self, *args, **kwargs):
-        serializer_class = self.get_serializer_class()
-        kwargs['context'] = self.get_serializer_context()
-        serializer = serializer_class(*args, **kwargs)
 
         if getattr(self, 'swagger_fake_view', False):
             return super().get_serializer(*args, **kwargs)
+
+        serializer_class = self.get_serializer_class()
+        kwargs['context'] = self.get_serializer_context()
+        serializer = serializer_class(*args, **kwargs)
 
         dormitory = get_object_or_404(Dormitory, admin=self.request.user)
         serializer.fields['floor'].queryset = Floor.objects.filter(dormitory=dormitory)
@@ -233,18 +234,26 @@ class StudentCreateAPIView(CreateAPIView):
     queryset = Student.objects.all()
 
     def get_serializer(self, *args, **kwargs):
-        serializer_class = self.get_serializer_class()
-        kwargs['context'] = self.get_serializer_context()
-        serializer = serializer_class(*args, **kwargs)
 
         if getattr(self, 'swagger_fake_view', False):
             return super().get_serializer(*args, **kwargs)
 
+        serializer_class = self.get_serializer_class()
+        kwargs['context'] = self.get_serializer_context()
+        serializer = serializer_class(*args, **kwargs)
+
         dormitory = get_object_or_404(Dormitory, admin=self.request.user)
         floors = Floor.objects.filter(dormitory=dormitory)
+
         serializer.fields['floor'].queryset = Floor.objects.filter(dormitory=dormitory)
         serializer.fields['room'].queryset = Room.objects.filter(floor__in=floors)
-        serializer.fields['user'].queryset = User.objects.filter(role='student')
+
+        province = self.request.query_params.get('province')
+        if province:
+            serializer.fields['district'].queryset = District.objects.filter(province=province)
+        else:
+            serializer.fields['district'].queryset = District.objects.none()
+
         return serializer
 
 
@@ -346,12 +355,14 @@ class PaymentCreateAPIView(CreateAPIView):
     queryset = Payment.objects.all()
 
     def get_serializer(self, *args, **kwargs):
-        serializer_class = self.get_serializer_class()
-        kwargs['context'] = self.get_serializer_context()
-        serializer = serializer_class(*args, **kwargs)
 
         if getattr(self, 'swagger_fake_view', False):
             return super().get_serializer(*args, **kwargs)
+
+
+        serializer_class = self.get_serializer_class()
+        kwargs['context'] = self.get_serializer_context()
+        serializer = serializer_class(*args, **kwargs)
 
         dormitory = get_object_or_404(Dormitory, admin=self.request.user)
         serializer.fields['student'].queryset = Student.objects.filter(dormitory=dormitory)

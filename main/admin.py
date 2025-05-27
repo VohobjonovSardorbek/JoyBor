@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, University, Dormitory, Floor, Room, Student, Application, Payment
+from .models import User, University, Dormitory, Floor, Room, Student, Application, Payment, Province, District
+
 
 class UserAdmin(BaseUserAdmin):
     list_display = ('username', 'email', 'role', 'is_active', 'is_staff')
@@ -49,7 +50,7 @@ admin.site.register(Room, RoomAdmin)
 
 
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'user', 'dormitory')
+    list_display = ('name', 'dormitory')
     search_fields = ['name', 'dormitory']
     list_filter = ['dormitory', 'floor']
 
@@ -70,5 +71,6 @@ class PaymentAdmin(admin.ModelAdmin):
     list_filter = ['dormitory', 'status']
 
 admin.site.register(Payment, PaymentAdmin)
-
+admin.site.register(Province)
+admin.site.register(District)
 
