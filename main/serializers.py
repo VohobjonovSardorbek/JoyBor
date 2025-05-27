@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from rest_framework.fields import SerializerMethodField
-
 from .models import *
 
 
@@ -140,12 +139,22 @@ class StudentSafeSerializer(serializers.ModelSerializer):
     room = RoomSafeSerializer(read_only=True)
     payments = PaymentShortSerializer(read_only=True, many=True)
     total_payment = SerializerMethodField()
+    picture = SerializerMethodField()
 
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'tarif', 'imtiyoz',
                   'payments', 'total_payment', 'accepted_date']
+        read_only_fields = ['accepted_date']
+
+    def get_picture(self, obj):
+        request = self.context.get('request')
+        if obj.picture and hasattr(obj.picture, 'url'):
+            if request is not None:
+                return request.build_absolute_uri(obj.picture.url)
+            return obj.picture.url
+        return None
 
     def get_total_payment(self, obj):
         return sum(p.amount for p in obj.payments.filter(status='APPROVED'))
@@ -162,6 +171,7 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'floor', 'room', 'phone', 'picture', 'tarif', 'imtiyoz', 'accepted_date']
+        read_only_fields = ['accepted_date']
 
     def validate(self, attrs):
         room = attrs.get('room')

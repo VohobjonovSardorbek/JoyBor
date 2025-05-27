@@ -102,7 +102,7 @@ class Student(models.Model):
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1, related_name='students')  # yangi
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students')
-    phone = models.IntegerField()
+    phone = models.CharField(blank=True, null=True)
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True) #yangi
     TARIF_CHOICES = (
         ('Nogiron', 'Nogiron'),
@@ -126,7 +126,7 @@ class Student(models.Model):
         ('100%', '100%'),
     )
     imtiyoz = models.CharField(max_length=120, choices=IMTIYOZ_CHOICES, default='0%')
-    accepted_date = models.DateField(blank=True, null=True)
+    accepted_date = models.DateField(auto_now_add=True)
 
     class Meta:
         verbose_name = 'Student'
