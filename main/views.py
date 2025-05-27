@@ -399,5 +399,21 @@ class ProvinceListAPIView(ListAPIView):
 
 class DistrictListAPIView(ListAPIView):
     serializer_class = DistrictSerializer
-    queryset = District.objects.all()
     permission_classes = [AllowAny]
+
+    province_param = openapi.Parameter(
+        'province', openapi.IN_QUERY,
+        description="Filter districts by province ID",
+        type=openapi.TYPE_INTEGER,
+        required=False
+    )
+
+    @swagger_auto_schema(manual_parameters=[province_param])
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        province_id = self.request.query_params.get('province')
+        if province_id:
+            return District.objects.filter(province__id=province_id)
+        return District.objects.all()
