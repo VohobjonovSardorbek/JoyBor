@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from rest_framework import viewsets
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView, CreateAPIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import *
@@ -388,3 +389,15 @@ class PaymentDetailAPIView(RetrieveUpdateDestroyAPIView):
             dormitory = Dormitory.objects.get(admin=user)
             return Payment.objects.filter(dormitory=dormitory)
         return Payment.objects.none()
+
+
+class ProvinceListAPIView(ListAPIView):
+    serializer_class = ProvinceSerializer
+    queryset = Province.objects.all()
+    permission_classes = [AllowAny]
+
+
+class DistrictListAPIView(ListAPIView):
+    serializer_class = DistrictSerializer
+    queryset = District.objects.all()
+    permission_classes = [AllowAny]
