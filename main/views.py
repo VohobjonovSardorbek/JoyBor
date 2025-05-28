@@ -251,7 +251,7 @@ class StudentCreateAPIView(CreateAPIView):
         serializer.fields['floor'].queryset = Floor.objects.filter(dormitory=dormitory)
         serializer.fields['room'].queryset = Room.objects.filter(floor__in=floors)
 
-        province = self.request.query_params.get('province')
+        province = self.request.data.get('province')
         if province:
             serializer.fields['district'].queryset = District.objects.filter(province=province)
         else:
