@@ -1,5 +1,4 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView, CreateAPIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import *
@@ -9,8 +8,10 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from django.db.models import Q
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser
+from .filters import StudentFilter
 
 
 class UserListAPIView(ListAPIView):
@@ -265,6 +266,22 @@ class RoomDetailAPIView(RetrieveUpdateDestroyAPIView):
 class StudentListAPIView(ListAPIView):
     serializer_class = StudentSafeSerializer
     permission_classes = [IsAdminOrDormitoryAdmin]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = StudentFilter
+    search_fields = ['name', 'last_name']
+
+    # @swagger_auto_schema(
+    #     manual_parameters=[
+    #         openapi.Parameter(
+    #             'floor',
+    #             openapi.IN_QUERY,
+    #             description="Floor ID bo‘yicha filterlash",
+    #             type=openapi.TYPE_INTEGER
+    #         ),
+    #     ]
+    # )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -298,7 +315,7 @@ class StudentCreateAPIView(CreateAPIView):
         floors = Floor.objects.filter(dormitory=dormitory)
 
         serializer.fields['floor'].queryset = Floor.objects.filter(dormitory=dormitory)
-        serializer.fields['room'].queryset = Room.objects.filter(floor__in=floors)
+        serializer.fields['room'].queryset = Room.objects.filter(floor__in=floors).exclude(status='FULLY_OCCUPIED')
 
         province = self.request.data.get('province')
         if province:
