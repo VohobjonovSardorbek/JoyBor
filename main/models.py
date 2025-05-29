@@ -49,9 +49,17 @@ class Dormitory(models.Model):
     university = models.ForeignKey(University, on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
     admin = models.ForeignKey(User, on_delete=models.CASCADE)
-    photo = models.ImageField(blank=True, null=True)
+    #yangi
+    month_price = models.IntegerField(blank=True, null=True)
+    year_price = models.IntegerField(blank=True, null=True)
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
 
-    # is_active = models.BooleanField(default=True)
+    #qo'shimcha qulayliklar
+    has_wifi = models.BooleanField(default=False)
+    has_library = models.BooleanField(default=False)
+    has_gym = models.BooleanField(default=False)
+    has_classroom = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Dormitory'
@@ -59,6 +67,14 @@ class Dormitory(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class DormitoryImage(models.Model):
+    dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to='dormitory_images' ,blank=True, null=True)
+
+    def __str__(self):
+        return self.dormitory.name
 
 
 class Floor(models.Model):
@@ -79,6 +95,11 @@ class Room(models.Model):
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE)
     capacity = models.IntegerField()
     currentOccupancy = models.IntegerField(default=0)
+    ROOM_TYPE_CHOICES = (
+        ("3-Kishilik", "3-Kishilik"),
+        ('5-Kishillik', '5-Kishillik'),
+    )
+    room_type = models.CharField(choices=ROOM_TYPE_CHOICES, max_length=20, default='3-Kishilik') #yangi
     gender = models.CharField(choices=(('female', 'female'), ('male', 'male')), max_length=20, default='male')
     status = models.CharField(choices=(('AVAILABLE', 'AVAILABLE'), ('PARTIALLY_OCCUPIED', 'PARTIALLY_OCCUPIED'),
                                        ('FULLY_OCCUPIED', 'FULLY_OCCUPIED')), max_length=20, default='AVAILABLE')
@@ -101,6 +122,8 @@ class Student(models.Model):
     direction = models.CharField(max_length=120, blank=True, null=True)  # yangi
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1, related_name='students')  # yangi
+    passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
+    group = models.CharField(max_length=120, blank=True, null=True)
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students')
     phone = models.CharField(blank=True, null=True)
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True) #yangi
@@ -166,7 +189,7 @@ class Payment(models.Model):
     paid_date = models.DateField(auto_now_add=True)
     valid_until = models.DateField(blank=True, null=True) #yangi
     method = models.CharField(choices=(('Cash', 'Cash'), ('Card', 'Card')), max_length=20)
-    status = models.CharField(choices=(('PENDING', 'PENDING'), ('APPROVED', 'APPROVED'), ('CANCELLED', 'CANCELLED')),
+    status = models.CharField(choices=(('APPROVED', 'APPROVED'), ('CANCELLED', 'CANCELLED')),
                               max_length=20)
     comment = models.TextField(blank=True, null=True) # yangi
 

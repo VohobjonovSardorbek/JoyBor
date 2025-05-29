@@ -85,13 +85,62 @@ class DormitoryCreateAPIView(CreateAPIView):
 
 class DormitoryDetailAPIView(RetrieveUpdateDestroyAPIView):
     queryset = Dormitory.objects.all()
-    serializer_class = DormitorySerializer
     permission_classes = [IsOwnerOrIsAdmin]
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return DormitorySafeSerializer
+        return DormitorySerializer
 
     def perform_destroy(self, instance):
         if self.request.user.is_superuser:
             raise PermissionDenied('Faqat superadmin yotoqxona o\'chira oladi')
         instance.delete()
+
+
+class DormitoryImageListAPIView(ListAPIView):
+    serializer_class = DormitoryImageSafeSerializer
+    permission_classes = [IsAdminOrDormitoryAdmin]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return DormitoryImage.objects.none()
+        user = self.request.user
+        if user.is_superuser:
+            return DormitoryImage.objects.all()
+        elif Dormitory.objects.filter(admin=user).exists():
+            dormitory = Dormitory.objects.filter(admin=user)[0]
+            return DormitoryImage.objects.filter(dormitory=dormitory)
+        return DormitoryImage.objects.none()
+
+
+
+class DormitoryImageCreateAPIView(CreateAPIView):
+    queryset = DormitoryImage.objects.all()
+    serializer_class = DormitoryImageSerializer
+    permission_classes = [IsDormitoryAdmin]
+    parser_classes = [MultiPartParser, FormParser]
+
+
+class DormitoryImageDetailAPIView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAdminOrDormitoryAdmin]
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return DormitoryImageSafeSerializer
+        return DormitoryImageSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return DormitoryImage.objects.none()
+        user = self.request.user
+        if user.is_superuser:
+            return DormitoryImage.objects.all()
+        elif Dormitory.objects.filter(admin=user).exists():
+            dormitory = Dormitory.objects.filter(admin=user)[0]
+            return DormitoryImage.objects.filter(dormitory=dormitory)
+        return DormitoryImage.objects.none()
+
 
 
 class FloorListAPIView(ListAPIView):

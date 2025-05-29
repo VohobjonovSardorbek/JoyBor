@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, University, Dormitory, Floor, Room, Student, Application, Payment, Province, District
+from .models import User, University, Dormitory, Floor, Room, Student, Application, Payment, Province, District, \
+    DormitoryImage
 
 
 class UserAdmin(BaseUserAdmin):
@@ -73,4 +74,5 @@ class PaymentAdmin(admin.ModelAdmin):
 admin.site.register(Payment, PaymentAdmin)
 admin.site.register(Province)
 admin.site.register(District)
+admin.site.register(DormitoryImage)
 

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from rest_framework.fields import SerializerMethodField
 from .models import *
+from django.db.models import Sum
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -46,13 +47,66 @@ class UniversitySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+
+class DormitoryShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dormitory
+        fields = ['id', 'name']
+
+
+class DormitoryImageSafeSerializer(serializers.ModelSerializer):
+    dormitory = DormitoryShortSerializer(read_only=True)
+    class Meta:
+        model = DormitoryImage
+        fields = ['id', 'dormitory', 'image']
+
+
+class DormitoryImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DormitoryImage
+        fields = ['id', 'image']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user
+
+        try:
+            dormitory = Dormitory.objects.get(admin=user)
+        except Dormitory.DoesNotExist:
+            raise serializers.ValidationError("Sizga hech qanday yotoqxona biriktirilmagan")
+
+        validated_data['dormitory'] = dormitory
+
+        return super().create(validated_data)
+
+
+
 class DormitorySafeSerializer(serializers.ModelSerializer):
     university = UniversitySerializer(read_only=True)
     admin = UserSerializer(read_only=True)
+    images = DormitoryImageSafeSerializer(read_only=True, many=True)
+    total_capacity = serializers.SerializerMethodField()
+    available_capacity = serializers.SerializerMethodField()
+    total_rooms = serializers.SerializerMethodField()
 
     class Meta:
         model = Dormitory
-        fields = ['id', 'university', 'admin', 'name', 'address', 'description', 'photo']
+        fields = ['id', 'university', 'admin', 'name', 'address', 'description', 'images', 'month_price', 'year_price',
+                  'latitude', 'longitude', 'has_wifi', 'has_library', 'has_gym', 'has_classroom',
+                  'total_capacity', 'available_capacity', 'total_rooms']
+
+    def get_total_capacity(self, obj):
+        return Room.objects.filter(floor__dormitory=obj).aggregate(total=Sum('capacity'))['total'] or 0
+
+    def get_available_capacity(self, obj):
+        rooms = Room.objects.filter(floor__dormitory=obj)
+        available = 0
+        for room in rooms:
+            available += room.capacity - room.currentOccupancy
+        return available
+
+    def get_total_rooms(self, obj):
+        return Room.objects.filter(floor__dormitory=obj).count()
 
 
 class DormitorySerializer(serializers.ModelSerializer):
@@ -61,7 +115,8 @@ class DormitorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Dormitory
-        fields = ['id', 'name', 'university', 'address', 'description', 'admin', 'photo']
+        fields = ['id', 'name', 'university', 'address', 'description', 'admin', 'month_price', 'year_price',
+                  'latitude', 'longitude', 'has_wifi', 'has_library', 'has_gym', 'has_classroom']
 
     def validate(self, attrs):
         admin = attrs.get('admin')
@@ -107,7 +162,7 @@ class RoomSafeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ['id', 'name', 'floor', 'capacity', 'currentOccupancy', 'gender', 'status', 'students']
+        fields = ['id', 'name', 'floor', 'capacity', 'currentOccupancy', 'room_type', 'gender', 'status', 'students']
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -115,7 +170,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ['id', 'name', 'floor', 'capacity']
+        fields = ['id', 'name', 'floor', 'capacity', 'room_type']
 
     def create(self, validated_data):
         floor = validated_data.get('floor')
@@ -129,12 +184,6 @@ class PaymentShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = ['id', 'amount', 'method', 'paid_date', 'valid_until', 'comment']
-
-
-class DormitoryShortSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Dormitory
-        fields = ['id', 'name']
 
 
 class FloorShortSerializer(serializers.ModelSerializer):
@@ -164,7 +213,7 @@ class StudentSafeSerializer(serializers.ModelSerializer):
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'tarif', 'imtiyoz',
-                  'payments', 'total_payment', 'accepted_date']
+                  'payments', 'total_payment', 'accepted_date', 'group', 'passport']
         read_only_fields = ['accepted_date']
 
     def get_picture(self, obj):
@@ -189,7 +238,7 @@ class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
-                  'direction', 'floor', 'room', 'phone', 'picture', 'tarif', 'imtiyoz', 'accepted_date']
+                  'direction', 'floor', 'room', 'phone', 'picture', 'tarif', 'imtiyoz', 'accepted_date', 'passport', 'group']
         read_only_fields = ['accepted_date']
 
     def validate(self, attrs):
