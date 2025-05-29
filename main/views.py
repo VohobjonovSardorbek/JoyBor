@@ -261,8 +261,12 @@ class StudentCreateAPIView(CreateAPIView):
 
 
 class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
-    serializer_class = StudentSerializer
     permission_classes = [IsAdminOrDormitoryAdmin]
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return StudentSafeSerializer
+        return StudentSerializer
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

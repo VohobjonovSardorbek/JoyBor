@@ -131,12 +131,31 @@ class PaymentShortSerializer(serializers.ModelSerializer):
         fields = ['id', 'amount', 'method', 'paid_date', 'valid_until', 'comment']
 
 
+class DormitoryShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dormitory
+        fields = ['id', 'name']
+
+
+class FloorShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Floor
+        fields = ['id', 'name']
+
+
+class RoomShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Room
+        fields = ['id', 'name']
+
+
+
 class StudentSafeSerializer(serializers.ModelSerializer):
     province = ProvinceSerializer(read_only=True)
     district = DistrictSerializer(read_only=True)
-    dormitory = DormitorySafeSerializer(read_only=True)
-    floor = FloorSerializer(read_only=True)
-    room = RoomSafeSerializer(read_only=True)
+    dormitory = DormitoryShortSerializer(read_only=True)
+    floor = DormitoryShortSerializer(read_only=True)
+    room = RoomShortSerializer(read_only=True)
     payments = PaymentShortSerializer(read_only=True, many=True)
     total_payment = SerializerMethodField()
     picture = SerializerMethodField()
