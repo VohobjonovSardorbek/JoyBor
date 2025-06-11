@@ -1,4 +1,7 @@
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView, CreateAPIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import *
@@ -8,7 +11,7 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from django.db.models import Q
+from django.db.models import Q, F
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser
 from .filters import StudentFilter
@@ -487,3 +490,78 @@ class DistrictListAPIView(ListAPIView):
         if province_id:
             return District.objects.filter(province__id=province_id)
         return District.objects.all()
+
+
+class AdminDashboardAPIView(APIView):
+    permission_classes = [IsDormitoryAdmin]
+
+    def get(self, request):
+        try:
+            dormitory = Dormitory.objects.get(admin=request.user)
+        except Dormitory.DoesNotExist:
+            return Response({"error": "Dormitory not found for this admin"}, status=404)
+
+        students = Student.objects.filter(dormitory=dormitory)
+        total_students = students.count()
+        male_students = students.filter(room__gender='male').count()
+        female_students = students.filter(room__gender='female').count()
+
+        rooms = Room.objects.filter(floor__dormitory=dormitory)
+        total_available = rooms.aggregate(
+            free_spaces=Sum(F('capacity') - F('currentOccupancy'))
+        )['free_spaces'] or 0
+
+        male_rooms = rooms.filter(gender='male').aggregate(
+            free_spaces=Sum(F('capacity') - F('currentOccupancy'))
+        )['free_spaces'] or 0
+
+        female_rooms = rooms.filter(gender='female').aggregate(
+            free_spaces=Sum(F('capacity') - F('currentOccupancy'))
+        )['free_spaces'] or 0
+
+        payments = Payment.objects.filter(dormitory=dormitory)
+        today = timezone.now().date()
+
+        debtor_students_count = payments.filter(
+            Q(valid_until__lt=today) & Q(status='APPROVED')
+        ).values('student').distinct() or 0
+
+        non_debtor_students_count = payments.filter(
+            Q(valid_until__gte=today) & Q(status='APPROVED')
+        ).values('student').distinct() or 0
+
+        total_payment = payments.filter(status='APPROVED').aggregate(total=Sum('amount'))['total'] or 0
+
+        applications = Application.objects.filter(dormitory=dormitory)
+        total_applications = applications.count()
+        approved_applications = applications.filter(status='APPROVED').count()
+        rejected_applications = applications.filter(status='REJECTED').count()
+
+        recent_applications = applications.order_by('-created_at')
+
+        data = {
+            "students": {
+                "total": total_students,
+                "male": male_students,
+                "female": female_students,
+            },
+            "rooms": {
+                "total_available": total_available,
+                "male_rooms": male_rooms,
+                "female_rooms": female_rooms,
+            },
+            "payments": {
+                "debtor_students_count": debtor_students_count,
+                "non_debtor_students_count": non_debtor_students_count,
+                "total_payment": total_payment,
+            },
+            "applications": {
+                "total": total_applications,
+                "approved": approved_applications,
+                "rejected": rejected_applications,
+            },
+            "recent_applications": recent_applications
+        }
+
+        serializer = DashboardSerializer(data)
+        return Response(serializer.data)

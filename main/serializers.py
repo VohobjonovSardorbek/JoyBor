@@ -91,8 +91,10 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Dormitory
-        fields = ['id', 'university', 'admin', 'name', 'address', 'description', 'images', 'month_price', 'year_price',
-                  'latitude', 'longitude', 'has_wifi', 'has_library', 'has_gym', 'has_classroom',
+        fields = ['id', 'university', 'admin', 'name', 'address',
+                  'description', 'images', 'month_price', 'year_price',
+                  'latitude', 'longitude', 'has_wifi', 'has_library',
+                  'has_gym', 'has_classroom',
                   'total_capacity', 'available_capacity', 'total_rooms']
 
     def get_total_capacity(self, obj):
@@ -329,3 +331,36 @@ class PaymentSerializer(serializers.ModelSerializer):
         validated_data['dormitory'] = dormitory
 
         return super().create(validated_data)
+
+
+class StudentsStatsSerializer(serializers.Serializer):
+    total = serializers.IntegerField()
+    male = serializers.IntegerField()
+    female = serializers.IntegerField()
+
+class RoomsStatsSerializer(serializers.Serializer):
+    total_available = serializers.IntegerField()
+    male_rooms = serializers.IntegerField()
+    female_rooms = serializers.IntegerField()
+
+class PaymentsStatsSerializer(serializers.Serializer):
+    debtor_students_count = serializers.IntegerField()
+    non_debtor_students_count = serializers.IntegerField()
+    total_payment = serializers.IntegerField()
+
+class ApplicationsStatsSerializer(serializers.Serializer):
+    total = serializers.IntegerField()
+    approved = serializers.IntegerField()
+    rejected = serializers.IntegerField()
+
+class RecentApplicationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Application
+        fields = ['name', 'city', 'status', 'created_at']
+
+class DashboardSerializer(serializers.Serializer):
+    students = StudentsStatsSerializer()
+    rooms = RoomsStatsSerializer()
+    payments = PaymentsStatsSerializer()
+    applications = ApplicationsStatsSerializer()
+    recent_applications = RecentApplicationSerializer(many=True)

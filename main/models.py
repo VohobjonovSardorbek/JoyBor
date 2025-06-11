@@ -1,3 +1,4 @@
+from datetime import date
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -173,6 +174,7 @@ class Application(models.Model):
     university = models.CharField(blank=True, null=True, max_length=255)
     phone = models.IntegerField()
     passport = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = 'Application'

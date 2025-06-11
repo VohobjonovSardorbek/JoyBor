@@ -14,7 +14,7 @@ from main.views import DormitoryListAPIView, UniversityListAPIView, DormitoryCre
     StudentDetailAPIView, ApplicationListAPIView, ApplicationCreateAPIView, ApplicationDetailAPIView, \
     PaymentListAPIView, PaymentCreateAPIView, PaymentDetailAPIView, UserListAPIView, UserDetailAPIView, \
     UserCreateAPIView, ProvinceListAPIView, DistrictListAPIView, DormitoryImageListAPIView, DormitoryImageDetailAPIView, \
-    DormitoryImageCreateAPIView
+    DormitoryImageCreateAPIView, AdminDashboardAPIView
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -70,6 +70,7 @@ urlpatterns += [
 
     path('provinces/', ProvinceListAPIView.as_view(), name='province-list'),
     path('districts/', DistrictListAPIView.as_view(), name='district-list'),
+    path('dashboard/', AdminDashboardAPIView.as_view(), name='dashboard'),
 
     path('dormitory_images/', DormitoryImageListAPIView.as_view(), name='dormitory-image-list'),
     path('dormitory_image_create', DormitoryImageCreateAPIView.as_view(), name='dormitory-image-create'),
