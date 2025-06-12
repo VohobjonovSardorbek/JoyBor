@@ -104,7 +104,7 @@ class DormitoryDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 class DormitoryImageListAPIView(ListAPIView):
     serializer_class = DormitoryImageSafeSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -127,7 +127,7 @@ class DormitoryImageCreateAPIView(CreateAPIView):
 
 
 class DormitoryImageDetailAPIView(RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -149,15 +149,13 @@ class DormitoryImageDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 class FloorListAPIView(ListAPIView):
     serializer_class = FloorSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Floor.objects.none()
         user = self.request.user
-        if user.is_superuser:
-            return Floor.objects.all()
-        elif Dormitory.objects.filter(admin=user).exists():
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Floor.objects.filter(dormitory=dormitory)
         return Floor.objects.none()
@@ -171,15 +169,13 @@ class FloorCreateAPIView(CreateAPIView):
 
 class FloorDetailAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = FloorSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Floor.objects.none()
         user = self.request.user
-        if user.is_superuser:
-            return Floor.objects.all()
-        elif Dormitory.objects.filter(admin=user).exists():
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Floor.objects.filter(dormitory=dormitory)
         return Floor.objects.none()
@@ -187,7 +183,7 @@ class FloorDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 class RoomListAPIView(ListAPIView):
     serializer_class = RoomSafeSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     @swagger_auto_schema(
         manual_parameters=[
@@ -209,9 +205,7 @@ class RoomListAPIView(ListAPIView):
 
         queryset = Room.objects.none()
 
-        if user.is_superuser:
-            queryset = Room.objects.all()
-        elif Dormitory.objects.filter(admin=user).exists():
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             floors = Floor.objects.filter(dormitory=dormitory)
             queryset = Room.objects.filter(floor__in=floors)
@@ -251,15 +245,13 @@ class RoomCreateAPIView(CreateAPIView):
 
 class RoomDetailAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = RoomSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Room.objects.none()
         user = self.request.user
-        if user.is_superuser:
-            return Room.objects.all()
-        elif Dormitory.objects.filter(admin=user).exists():
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             floors = Floor.objects.filter(dormitory=dormitory)
             return Room.objects.filter(floor__in=floors)
@@ -268,7 +260,7 @@ class RoomDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 class StudentListAPIView(ListAPIView):
     serializer_class = StudentSafeSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = StudentFilter
     search_fields = ['name', 'last_name']
@@ -291,9 +283,8 @@ class StudentListAPIView(ListAPIView):
             return Student.objects.none()
 
         user = self.request.user
-        if user.is_superuser:
-            return Student.objects.all()
-        elif Dormitory.objects.filter(admin=user).exists():
+
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Student.objects.filter(dormitory=dormitory)
         return Student.objects.none()
@@ -330,7 +321,7 @@ class StudentCreateAPIView(CreateAPIView):
 
 
 class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -342,9 +333,8 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
             return Student.objects.none()
 
         user = self.request.user
-        if user.is_superuser:
-            return Student.objects.all()
-        elif Dormitory.objects.filter(admin=user).exists():
+
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Student.objects.filter(dormitory=dormitory)
         return Student.objects.none()
@@ -367,17 +357,14 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 class ApplicationListAPIView(ListAPIView):
     serializer_class = ApplicationSafeSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Application.objects.none()
         user = self.request.user
 
-        if user.is_superuser:
-            return Application.objects.all()
-
-        elif Dormitory.objects.filter(admin=user).exists():
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Application.objects.filter(dormitory=dormitory)
         return Application.objects.none()
@@ -391,17 +378,14 @@ class ApplicationCreateAPIView(CreateAPIView):
 
 class ApplicationDetailAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = ApplicationSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Application.objects.none()
         user = self.request.user
 
-        if user.is_superuser:
-            return Application.objects.all()
-
-        elif Dormitory.objects.filter(admin=user).exists():
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Application.objects.filter(dormitory=dormitory)
         return Application.objects.none()
@@ -409,17 +393,14 @@ class ApplicationDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 class PaymentListAPIView(ListAPIView):
     serializer_class = PaymentSafeSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Application.objects.none()
         user = self.request.user
 
-        if user.is_superuser:
-            return Payment.objects.all()
-
-        elif Dormitory.objects.filter(admin=user).exists():
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Payment.objects.filter(dormitory=dormitory)
         return Payment.objects.none()
@@ -447,18 +428,14 @@ class PaymentCreateAPIView(CreateAPIView):
 
 class PaymentDetailAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = PaymentSerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+    permission_classes = [IsDormitoryAdmin]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Application.objects.none()
         user = self.request.user
 
-        if user.is_superuser:
-            return Payment.objects.all()
-
-
-        elif Dormitory.objects.filter(admin=user).exists():
+        if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Payment.objects.filter(dormitory=dormitory)
         return Payment.objects.none()
