@@ -224,6 +224,56 @@ class RoomListAPIView(ListAPIView):
         return queryset
 
 
+class EveryAvailableRoomsAPIView(ListAPIView):
+    serializer_class = RoomSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Room.objects.none()
+        user = self.request.user
+
+        queryset = Room.objects.none()
+
+        if Dormitory.objects.filter(admin=user).exists():
+            dormitory = Dormitory.objects.get(admin=user)
+            floors = Floor.objects.filter(dormitory=dormitory)
+            queryset = Room.objects.filter(floor__in=floors).exclude(status='FULLY_OCCUPIED')
+
+        return queryset
+
+
+class AvailableFloorsAPIView(ListAPIView):
+    serializer_class = FloorSerializer
+
+    def get_queryset(self):
+        dormitory = get_object_or_404(Dormitory, admin=self.request.user)
+        return Floor.objects.filter(dormitory=dormitory)
+
+
+class AvailableRoomsAPIView(ListAPIView):
+    serializer_class = RoomSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Room.objects.none()
+
+        dormitory = Dormitory.objects.filter(admin=user).first()
+        if not dormitory:
+            return queryset
+
+        floors = Floor.objects.filter(dormitory=dormitory)
+        queryset = Room.objects.filter(floor__in=floors)
+
+        floor_id = self.request.query_params.get('floor')
+        if floor_id and floor_id.isdigit():
+            floor_id = int(floor_id)
+            if floors.filter(id=floor_id).exists():
+                queryset = queryset.filter(floor_id=floor_id).exclude(status='FULLY_OCCUPIED')
+            else:
+                queryset = Room.objects.none()
+        return queryset
+
+
 class RoomCreateAPIView(CreateAPIView):
     serializer_class = RoomSerializer
     permission_classes = [IsDormitoryAdmin]

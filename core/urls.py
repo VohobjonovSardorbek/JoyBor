@@ -8,13 +8,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 
-from main.views import DormitoryListAPIView, UniversityListAPIView, DormitoryCreateAPIView, UniversityDetailApiView, \
-    UniversityCreateAPIView, DormitoryDetailAPIView, FloorListAPIView, FloorCreateAPIView, FloorDetailAPIView, \
-    RoomListAPIView, RoomCreateAPIView, RoomDetailAPIView, StudentListAPIView, StudentCreateAPIView, \
-    StudentDetailAPIView, ApplicationListAPIView, ApplicationCreateAPIView, ApplicationDetailAPIView, \
-    PaymentListAPIView, PaymentCreateAPIView, PaymentDetailAPIView, UserListAPIView, UserDetailAPIView, \
-    UserCreateAPIView, ProvinceListAPIView, DistrictListAPIView, DormitoryImageListAPIView, DormitoryImageDetailAPIView, \
-    DormitoryImageCreateAPIView, AdminDashboardAPIView
+from main.views import *
 
 schema_view = get_schema_view(
     openapi.Info(
@@ -49,10 +43,13 @@ urlpatterns += [
     path('dormitories/<int:pk>/', DormitoryDetailAPIView.as_view(), name='dormitory-detail'),
 
     path('floors/', FloorListAPIView.as_view(), name='floor-list'),
+    path('available-floors/', AvailableFloorsAPIView.as_view(), name='available-floors'),
     path('floor/create/', FloorCreateAPIView.as_view(), name='floor-create'),
     path('floors/<int:pk>/', FloorDetailAPIView.as_view(), name='floor-detail'),
 
     path('rooms/', RoomListAPIView.as_view(), name='room-list'),
+    path('every-available-rooms/', EveryAvailableRoomsAPIView.as_view(), name='available-rooms'),
+    path('available-rooms/', AvailableRoomsAPIView.as_view(), name='available-rooms'),
     path('room/create/', RoomCreateAPIView.as_view(), name='room-create'),
     path('rooms/<int:pk>/', RoomDetailAPIView.as_view(), name='room-detail'),
 
