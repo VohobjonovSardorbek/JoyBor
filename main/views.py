@@ -1,3 +1,5 @@
+import openpyxl
+from django.http import HttpResponse
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
@@ -79,6 +81,15 @@ class DormitoryListAPIView(ListAPIView):
     queryset = Dormitory.objects.all()
     serializer_class = DormitorySafeSerializer
     permission_classes = [AllowAny]
+
+
+class MyDormitoryAPIView(APIView):
+    permission_classes = [IsDormitoryAdmin]
+
+    def get(self,request):
+        dormitory = get_object_or_404(Dormitory, admin=request.user)
+        serializer = DormitorySafeSerializer(dormitory)
+        return Response(serializer.data)
 
 
 class DormitoryCreateAPIView(CreateAPIView):
@@ -340,6 +351,56 @@ class StudentListAPIView(ListAPIView):
         return Student.objects.none()
 
 
+
+class ExportStudentExcelAPIView(APIView):
+    permission_classes = [IsDormitoryAdmin]
+
+    def get(self, request, *args, **kwargs):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Students"
+
+        ws.append([
+            'ID',
+            'Name',
+            'Last Name',
+            'Middle Name',
+            'Province',
+            'District',
+            'Faculty',
+            'Group',
+            'Phone',
+            'Passport',
+            'Imtiyoz',
+            'Accepted Date'
+        ])
+        dormitory = get_object_or_404(Dormitory, admin=request.user)
+        students = Student.objects.select_related('province', 'district').filter(dormitory=dormitory)
+
+        for student in students:
+            ws.append([
+                student.id,
+                student.name,
+                student.last_name or '',
+                student.middle_name or '',
+                student.province.name if student.province else '',
+                student.district.name if student.district else '',
+                student.faculty,
+                student.group or '',
+                student.phone or '',
+                student.passport or '',
+                student.imtiyoz,
+                student.accepted_date.strftime('%Y-%m-%d') if student.accepted_date else ''
+            ])
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=students.xlsx'
+        wb.save(response)
+        return response
+
+
 class StudentCreateAPIView(CreateAPIView):
     serializer_class = StudentSerializer
     permission_classes = [IsDormitoryAdmin]
@@ -454,6 +515,51 @@ class PaymentListAPIView(ListAPIView):
             dormitory = Dormitory.objects.get(admin=user)
             return Payment.objects.filter(dormitory=dormitory)
         return Payment.objects.none()
+
+
+class ExportPaymentExcelAPIView(APIView):
+    permission_classes = [IsDormitoryAdmin]
+
+    def get(self, request, *args, **kwargs):
+        dormitory = get_object_or_404(Dormitory, admin=request.user)
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Payments"
+
+        ws.append([
+            'ID',
+            'Student Name',
+            'Student Last Name',
+            'Amount',
+            'Paid Date',
+            'Valid Until',
+            'Method',
+            'Status',
+            'Comment'
+        ])
+
+        payments = Payment.objects.select_related('student').filter(dormitory=dormitory)
+
+        for payment in payments:
+            ws.append([
+                payment.id,
+                payment.student.name,
+                payment.student.last_name or '',
+                payment.amount,
+                payment.paid_date.strftime('%Y-%m-%d') if payment.paid_date else '',
+                payment.valid_until.strftime('%Y-%m-%d') if payment.valid_until else '',
+                payment.method,
+                payment.status,
+                payment.comment or ''
+            ])
+
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=payments.xlsx'
+        wb.save(response)
+        return response
 
 
 class PaymentCreateAPIView(CreateAPIView):

@@ -39,6 +39,7 @@ urlpatterns += [
     path('universities/<int:pk>/', UniversityDetailApiView.as_view(), name='university-detail'),
 
     path('dormitories/', DormitoryListAPIView.as_view(), name='dormitory-list'),
+    path('my-dormitory/', MyDormitoryAPIView.as_view(), name='my-dormitory'),
     path('dormitory/create/', DormitoryCreateAPIView.as_view(), name='dormitory-create'),
     path('dormitories/<int:pk>/', DormitoryDetailAPIView.as_view(), name='dormitory-detail'),
 
@@ -54,6 +55,7 @@ urlpatterns += [
     path('rooms/<int:pk>/', RoomDetailAPIView.as_view(), name='room-detail'),
 
     path('students/', StudentListAPIView.as_view(), name='student-list'),
+    path('export-student/', ExportStudentExcelAPIView.as_view(), name='export-student'),
     path('student/create/', StudentCreateAPIView.as_view(), name='student-create'),
     path('students/<int:pk>/', StudentDetailAPIView.as_view(), name='student-detail'),
 
@@ -62,6 +64,7 @@ urlpatterns += [
     path('applications/<int:pk>/', ApplicationDetailAPIView.as_view(), name='application-detail'),
 
     path('payments/', PaymentListAPIView.as_view(), name='payment-list'),
+    path('export-payment/', ExportPaymentExcelAPIView.as_view(), name='export-payment'),
     path('payment/create/', PaymentCreateAPIView.as_view(), name='payment-create'),
     path('payments/<int:pk>/', PaymentDetailAPIView.as_view(), name='payment-detail'),
 
