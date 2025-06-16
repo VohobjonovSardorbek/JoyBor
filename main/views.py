@@ -217,25 +217,16 @@ class RoomListAPIView(ListAPIView):
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Room.objects.none()
+
         user = self.request.user
+        dormitory = Dormitory.objects.get(admin=user)
+        queryset = Room.objects.filter(floor__dormitory=dormitory)
 
-        queryset = Room.objects.none()
-
-        if Dormitory.objects.filter(admin=user).exists():
-            dormitory = Dormitory.objects.get(admin=user)
-            floors = Floor.objects.filter(dormitory=dormitory)
-            queryset = Room.objects.filter(floor__in=floors)
-
-            floor_id = self.request.query_params.get('floor')
-            if floor_id:
-                try:
-                    floor_id = int(floor_id)
-                    if floors.filter(id=floor_id).exists():
-                        queryset = queryset.filter(floor_id=floor_id)
-                    else:
-                        queryset = Room.objects.none()
-                except ValueError:
-                    queryset = Room.objects.none()
+        floor_id = self.request.query_params.get('floor')
+        if floor_id and floor_id.isdigit():
+            queryset = queryset.filter(floor_id=int(floor_id))
+        elif floor_id:
+            return Room.objects.none()
 
         return queryset
 
@@ -243,19 +234,40 @@ class RoomListAPIView(ListAPIView):
 class EveryAvailableRoomsAPIView(ListAPIView):
     serializer_class = RoomSerializer
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'floor',
+                openapi.IN_QUERY,
+                description="Floor ID bo‘yicha filterlash",
+                type=openapi.TYPE_INTEGER
+            ),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Room.objects.none()
+
         user = self.request.user
+        dormitories = Dormitory.objects.filter(admin=user)
 
-        queryset = Room.objects.none()
+        if not dormitories.exists():
+            return Room.objects.none()
 
-        if Dormitory.objects.filter(admin=user).exists():
-            dormitory = Dormitory.objects.get(admin=user)
-            floors = Floor.objects.filter(dormitory=dormitory)
-            queryset = Room.objects.filter(floor__in=floors).exclude(status='FULLY_OCCUPIED')
+        floors = Floor.objects.filter(dormitory__in=dormitories)
+        rooms = Room.objects.filter(floor__in=floors).exclude(status='FULLY_OCCUPIED')
 
-        return queryset
+        floor_id = self.request.query_params.get('floor')
+        if floor_id:
+            if floor_id.isdigit():
+                rooms = rooms.filter(floor_id=int(floor_id))
+            else:
+                return Room.objects.none()
+
+        return rooms
 
 
 class AvailableFloorsAPIView(ListAPIView):
@@ -269,7 +281,23 @@ class AvailableFloorsAPIView(ListAPIView):
 class AvailableRoomsAPIView(ListAPIView):
     serializer_class = RoomSerializer
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'floor',
+                openapi.IN_QUERY,
+                description="Floor ID bo‘yicha filterlash",
+                type=openapi.TYPE_INTEGER
+            ),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Room.objects.none()
+
         user = self.request.user
         queryset = Room.objects.none()
 
@@ -278,13 +306,13 @@ class AvailableRoomsAPIView(ListAPIView):
             return queryset
 
         floors = Floor.objects.filter(dormitory=dormitory)
-        queryset = Room.objects.filter(floor__in=floors)
+        queryset = Room.objects.filter(floor__in=floors).exclude(status='FULLY_OCCUPIED')
 
         floor_id = self.request.query_params.get('floor')
         if floor_id and floor_id.isdigit():
             floor_id = int(floor_id)
             if floors.filter(id=floor_id).exists():
-                queryset = queryset.filter(floor_id=floor_id).exclude(status='FULLY_OCCUPIED')
+                queryset = queryset.filter(floor_id=floor_id)
             else:
                 queryset = Room.objects.none()
         return queryset

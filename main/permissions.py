@@ -28,7 +28,6 @@ class IsDormitoryAdmin(BasePermission):
             if not has_dormitory:
                 raise PermissionDenied("Sizda yotoqxona mavjud emas.")
             return True
-
         return False
 
 
