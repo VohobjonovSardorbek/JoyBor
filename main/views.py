@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.generics import RetrieveUpdateDestroyAPIView, ListAPIView, CreateAPIView
+from rest_framework.generics import *
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import *
 from .serializers import *
@@ -83,13 +83,20 @@ class DormitoryListAPIView(ListAPIView):
     permission_classes = [AllowAny]
 
 
-class MyDormitoryAPIView(APIView):
+class MyDormitoryAPIView(RetrieveAPIView):
     permission_classes = [IsDormitoryAdmin]
+    serializer_class = DormitorySafeSerializer
 
-    def get(self,request):
-        dormitory = get_object_or_404(Dormitory, admin=request.user)
-        serializer = DormitorySafeSerializer(dormitory)
-        return Response(serializer.data)
+    def get_object(self):
+        return get_object_or_404(Dormitory, admin=self.request.user)
+
+
+class MyDormitoryUpdateAPIView(UpdateAPIView):
+    permission_classes = [IsDormitoryAdmin]
+    serializer_class = DormitorySerializer
+
+    def get_object(self):
+        return get_object_or_404(Dormitory, admin=self.request.user)
 
 
 class DormitoryCreateAPIView(CreateAPIView):
@@ -129,7 +136,6 @@ class DormitoryImageListAPIView(ListAPIView):
         return DormitoryImage.objects.none()
 
 
-
 class DormitoryImageCreateAPIView(CreateAPIView):
     queryset = DormitoryImage.objects.all()
     serializer_class = DormitoryImageSerializer
@@ -155,7 +161,6 @@ class DormitoryImageDetailAPIView(RetrieveUpdateDestroyAPIView):
             dormitory = Dormitory.objects.filter(admin=user)[0]
             return DormitoryImage.objects.filter(dormitory=dormitory)
         return DormitoryImage.objects.none()
-
 
 
 class FloorListAPIView(ListAPIView):
@@ -291,7 +296,6 @@ class RoomCreateAPIView(CreateAPIView):
     queryset = Room.objects.all()
 
     def get_serializer(self, *args, **kwargs):
-
         if getattr(self, 'swagger_fake_view', False):
             return super().get_serializer(*args, **kwargs)
 
@@ -349,7 +353,6 @@ class StudentListAPIView(ListAPIView):
             dormitory = Dormitory.objects.get(admin=user)
             return Student.objects.filter(dormitory=dormitory)
         return Student.objects.none()
-
 
 
 class ExportStudentExcelAPIView(APIView):
@@ -568,10 +571,8 @@ class PaymentCreateAPIView(CreateAPIView):
     queryset = Payment.objects.all()
 
     def get_serializer(self, *args, **kwargs):
-
         if getattr(self, 'swagger_fake_view', False):
             return super().get_serializer(*args, **kwargs)
-
 
         serializer_class = self.get_serializer_class()
         kwargs['context'] = self.get_serializer_context()

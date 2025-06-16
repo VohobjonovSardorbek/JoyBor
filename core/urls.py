@@ -40,6 +40,7 @@ urlpatterns += [
 
     path('dormitories/', DormitoryListAPIView.as_view(), name='dormitory-list'),
     path('my-dormitory/', MyDormitoryAPIView.as_view(), name='my-dormitory'),
+    path('my-dormitory-update/', MyDormitoryUpdateAPIView.as_view(), name='my-dormitory-update'),
     path('dormitory/create/', DormitoryCreateAPIView.as_view(), name='dormitory-create'),
     path('dormitories/<int:pk>/', DormitoryDetailAPIView.as_view(), name='dormitory-detail'),
 
