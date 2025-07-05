@@ -1,6 +1,6 @@
 import openpyxl
 from django.http import HttpResponse
-from django.utils import timezone
+from django.utils.timezone import now
 from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -13,7 +13,7 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from django.db.models import Q, F
+from django.db.models import Count, Sum, F, Case, When, Value, IntegerField, Q
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser
 from .filters import StudentFilter
@@ -368,8 +368,8 @@ class StudentListAPIView(ListAPIView):
     #         ),
     #     ]
     # )
-    def get(self, request, *args, **kwargs):
-        return super().get(request, *args, **kwargs)
+    # def get(self, request, *args, **kwargs):
+    #     return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -658,72 +658,72 @@ class AdminDashboardAPIView(APIView):
     permission_classes = [IsDormitoryAdmin]
 
     def get(self, request):
-        try:
-            dormitory = Dormitory.objects.get(admin=request.user)
-        except Dormitory.DoesNotExist:
-            return Response({"error": "Dormitory not found for this admin"}, status=404)
+        # 1. Dormitory olish
+        dormitory = Dormitory.objects.filter(admin=request.user).first()
+        if not dormitory:
+            return Response({"detail": "Dormitory not found"}, status=404)
 
-        students = Student.objects.filter(dormitory=dormitory)
-        total_students = students.count()
-        male_students = students.filter(room__gender='male').count()
-        female_students = students.filter(room__gender='female').count()
+        today = now().date()
 
-        rooms = Room.objects.filter(floor__dormitory=dormitory)
-        total_available = rooms.aggregate(
-            free_spaces=Sum(F('capacity') - F('currentOccupancy'))
-        )['free_spaces'] or 0
+        # 2. Talabalar statistikasi
+        students_stats = Student.objects.filter(dormitory=dormitory).aggregate(
+            total=Count('id'),
+            male=Count('id', filter=Q(room__gender='male')),
+            female=Count('id', filter=Q(room__gender='female')),
+        )
 
-        male_rooms = rooms.filter(gender='male').aggregate(
-            free_spaces=Sum(F('capacity') - F('currentOccupancy'))
-        )['free_spaces'] or 0
+        # 3. Xonalar statistikasi
+        room_stats = Room.objects.filter(floor__dormitory=dormitory).aggregate(
+            total_available=Sum(F('capacity') - F('currentOccupancy')),
+            male_rooms=Sum(
+                Case(
+                    When(gender='male', then=F('capacity') - F('currentOccupancy')),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            ),
+            female_rooms=Sum(
+                Case(
+                    When(gender='female', then=F('capacity') - F('currentOccupancy')),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            )
+        )
 
-        female_rooms = rooms.filter(gender='female').aggregate(
-            free_spaces=Sum(F('capacity') - F('currentOccupancy'))
-        )['free_spaces'] or 0
+        # 4. To‘lovlar statistikasi
+        payments = Payment.objects.filter(dormitory=dormitory, status='APPROVED')
+        payment_stats = payments.aggregate(
+            total_payment=Sum('amount')
+        )
 
-        payments = Payment.objects.filter(dormitory=dormitory)
-        today = timezone.now().date()
+        debtor_students = payments.filter(valid_until__lt=today).values('student').distinct().count()
+        non_debtor_students = payments.filter(valid_until__gte=today).values('student').distinct().count()
 
-        debtor_students_count = payments.filter(
-            Q(valid_until__lt=today) & Q(status='APPROVED')
-        ).values('student').distinct() or 0
-
-        non_debtor_students_count = payments.filter(
-            Q(valid_until__gte=today) & Q(status='APPROVED')
-        ).values('student').distinct() or 0
-
-        total_payment = payments.filter(status='APPROVED').aggregate(total=Sum('amount'))['total'] or 0
-
+        # 5. Arizalar statistikasi
         applications = Application.objects.filter(dormitory=dormitory)
-        total_applications = applications.count()
-        approved_applications = applications.filter(status='APPROVED').count()
-        rejected_applications = applications.filter(status='REJECTED').count()
+        application_stats = applications.aggregate(
+            total=Count('id'),
+            approved=Count('id', filter=Q(status='APPROVED')),
+            rejected=Count('id', filter=Q(status='REJECTED')),
+        )
+        recent_applications = applications.order_by('-created_at')[:10]
 
-        recent_applications = applications.order_by('-created_at')
-
+        # 6. Yig‘ish
         data = {
-            "students": {
-                "total": total_students,
-                "male": male_students,
-                "female": female_students,
-            },
+            "students": students_stats,
             "rooms": {
-                "total_available": total_available,
-                "male_rooms": male_rooms,
-                "female_rooms": female_rooms,
+                "total_available": room_stats['total_available'] or 0,
+                "male_rooms": room_stats['male_rooms'] or 0,
+                "female_rooms": room_stats['female_rooms'] or 0,
             },
             "payments": {
-                "debtor_students_count": debtor_students_count,
-                "non_debtor_students_count": non_debtor_students_count,
-                "total_payment": total_payment,
+                "debtor_students_count": debtor_students,
+                "non_debtor_students_count": non_debtor_students,
+                "total_payment": payment_stats['total_payment'] or 0,
             },
-            "applications": {
-                "total": total_applications,
-                "approved": approved_applications,
-                "rejected": rejected_applications,
-            },
-            "recent_applications": recent_applications
+            "applications": application_stats,
+            "recent_applications": RecentApplicationSerializer(recent_applications, many=True).data
         }
 
-        serializer = DashboardSerializer(data)
-        return Response(serializer.data)
+        return Response(data)
