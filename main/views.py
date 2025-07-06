@@ -727,3 +727,11 @@ class AdminDashboardAPIView(APIView):
         }
 
         return Response(data)
+
+
+from django.core.management import call_command
+from django.http import HttpResponse
+
+def collect_static_view(request):
+    call_command('collectstatic', interactive=False, verbosity=0)
+    return HttpResponse("✅ collectstatic bajarildi")
