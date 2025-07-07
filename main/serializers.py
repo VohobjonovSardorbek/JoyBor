@@ -164,7 +164,7 @@ class RoomSafeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ['id', 'name', 'floor', 'capacity', 'currentOccupancy', 'room_type', 'gender', 'status', 'students']
+        fields = ['id', 'name', 'floor', 'capacity', 'currentOccupancy', 'gender', 'status', 'students']
 
 
 class RoomSerializer(serializers.ModelSerializer):
@@ -172,7 +172,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ['id', 'name', 'floor', 'capacity', 'room_type']
+        fields = ['id', 'name', 'floor', 'capacity']
 
     def create(self, validated_data):
         floor = validated_data.get('floor')

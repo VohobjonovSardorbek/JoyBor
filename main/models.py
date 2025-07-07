@@ -96,11 +96,6 @@ class Room(models.Model):
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE)
     capacity = models.IntegerField()
     currentOccupancy = models.IntegerField(default=0)
-    ROOM_TYPE_CHOICES = (
-        ("3-Kishilik", "3-Kishilik"),
-        ('5-Kishillik', '5-Kishillik'),
-    )
-    room_type = models.CharField(choices=ROOM_TYPE_CHOICES, max_length=20, default='3-Kishilik') #yangi
     gender = models.CharField(choices=(('female', 'female'), ('male', 'male')), max_length=20, default='male')
     status = models.CharField(choices=(('AVAILABLE', 'AVAILABLE'), ('PARTIALLY_OCCUPIED', 'PARTIALLY_OCCUPIED'),
                                        ('FULLY_OCCUPIED', 'FULLY_OCCUPIED')), max_length=20, default='AVAILABLE')
