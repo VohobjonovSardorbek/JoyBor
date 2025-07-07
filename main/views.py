@@ -17,6 +17,7 @@ from django.db.models import Count, Sum, F, Case, When, Value, IntegerField, Q
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser
 from .filters import StudentFilter
+from django.utils.dateparse import parse_date
 
 
 class UserListAPIView(ListAPIView):
@@ -358,19 +359,6 @@ class StudentListAPIView(ListAPIView):
     filterset_class = StudentFilter
     search_fields = ['name', 'last_name']
 
-    # @swagger_auto_schema(
-    #     manual_parameters=[
-    #         openapi.Parameter(
-    #             'floor',
-    #             openapi.IN_QUERY,
-    #             description="Floor ID bo‘yicha filterlash",
-    #             type=openapi.TYPE_INTEGER
-    #         ),
-    #     ]
-    # )
-    # def get(self, request, *args, **kwargs):
-    #     return super().get(request, *args, **kwargs)
-
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Student.objects.none()
@@ -400,6 +388,7 @@ class ExportStudentExcelAPIView(APIView):
             'District',
             'Faculty',
             'Group',
+            'Course',
             'Phone',
             'Passport',
             'Imtiyoz',
@@ -418,6 +407,7 @@ class ExportStudentExcelAPIView(APIView):
                 student.district.name if student.district else '',
                 student.faculty,
                 student.group or '',
+                student.course or '',
                 student.phone or '',
                 student.passport or '',
                 student.imtiyoz,
@@ -536,16 +526,27 @@ class ApplicationDetailAPIView(RetrieveUpdateDestroyAPIView):
 class PaymentListAPIView(ListAPIView):
     serializer_class = PaymentSafeSerializer
     permission_classes = [IsDormitoryAdmin]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['student__name']
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Application.objects.none()
         user = self.request.user
 
-        if Dormitory.objects.filter(admin=user).exists():
-            dormitory = Dormitory.objects.get(admin=user)
-            return Payment.objects.filter(dormitory=dormitory)
-        return Payment.objects.none()
+        if not Dormitory.objects.filter(admin=user).exists():
+            return Payment.objects.none()
+
+        dormitory = Dormitory.objects.get(admin=user)
+        queryset = Payment.objects.filter(dormitory=dormitory)
+
+        from_date = self.request.query_params.get('date')
+        if from_date:
+            parsed_date = parse_date(from_date)
+            if parsed_date:
+                queryset = queryset.filter(paid_date__gte=parsed_date)
+
+        return queryset
 
 
 class ExportPaymentExcelAPIView(APIView):
@@ -727,3 +728,32 @@ class AdminDashboardAPIView(APIView):
         }
 
         return Response(data)
+
+
+class MonthlyRevenueAPIView(APIView):
+    permission_classes = [IsDormitoryAdmin]
+
+    def get(self, request):
+        user = request.user
+        data = MonthlyRevenueSerializer.get_monthly_revenue_for_user(user)
+        return Response(data)
+
+
+class RoomStatusStatsAPIView(APIView):
+    permission_classes = [IsDormitoryAdmin]
+
+    def get(self, request):
+
+        user = request.user
+
+        rooms = Room.objects.filter(floor__dormitory__admin=user)
+
+        available = rooms.filter(status='AVAILABLE').count()
+        partially = rooms.filter(status='PARTIALLY_OCCUPIED').count()
+        fully = rooms.filter(status='FULLY_OCCUPIED').count()
+
+        return Response({
+            'available': available,
+            'partially_occupied': partially,
+            'fully_occupied': fully
+        })

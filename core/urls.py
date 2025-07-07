@@ -76,6 +76,9 @@ urlpatterns += [
     path('dormitory_images/', DormitoryImageListAPIView.as_view(), name='dormitory-image-list'),
     path('dormitory_image_create', DormitoryImageCreateAPIView.as_view(), name='dormitory-image-create'),
     path('dormitory_images/<int:pk>/', DormitoryImageDetailAPIView.as_view(), name='dormitory-image-detail'),
+
+    path('monthly_revenue/', MonthlyRevenueAPIView.as_view(), name='monthly-revenue'),
+    path('room_status_stats/', RoomStatusStatsAPIView.as_view(), name='room-status-stats'),
 ]
 
 urlpatterns += [

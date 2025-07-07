@@ -109,6 +109,17 @@ class Room(models.Model):
 
 
 class Student(models.Model):
+    COURSE_CHOICES = (
+        ('1-kurs', '1-kurs'),
+        ('2-kurs', '2-kurs'),
+        ('3-kurs', '3-kurs'),
+        ('4-kurs', '4-kurs'),
+        ('5-kurs', '5-kurs'),
+    )
+    Gender_CHOICES = (
+        ('Erkak', 'Erkak'),
+        ('Ayol', 'Ayol'),
+    )
     name = models.CharField(max_length=120)
     last_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
     middle_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
@@ -120,31 +131,12 @@ class Student(models.Model):
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1, related_name='students')  # yangi
     passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
     group = models.CharField(max_length=120, blank=True, null=True)
+    course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs') #yangi
+    gender = models.CharField(max_length=120, choices=Gender_CHOICES, default='Erkak')
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students')
     phone = models.CharField(blank=True, null=True)
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True) #yangi
-    TARIF_CHOICES = (
-        ('Nogiron', 'Nogiron'),
-        ("Boquvchisini yo'qotgan", "Boquvchisini yo'qotgan"),
-        ('Yotoqxonada faol', 'Yotoqxonada faol'),
-        ('Boshqa', 'Boshqa'),
-        ('Oddiy', 'Oddiy'),
-    )
-    tarif = models.CharField(max_length=120, choices=TARIF_CHOICES, default='Oddiy') #yangi
-    IMTIYOZ_CHOICES = (
-        ('0%', '0%'),
-        ('10%', '10%'),
-        ('20%', '20%'),
-        ('30%', '30%'),
-        ('40%', '40%'),
-        ('50%', '50%'),
-        ('60%', '60%'),
-        ('70%', '70%'),
-        ('80%', '80%'),
-        ('90%', '90%'),
-        ('100%', '100%'),
-    )
-    imtiyoz = models.CharField(max_length=120, choices=IMTIYOZ_CHOICES, default='0%')
+    imtiyoz = models.BooleanField(default=False)
     accepted_date = models.DateField(auto_now_add=True)
 
     class Meta:

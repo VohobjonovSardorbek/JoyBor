@@ -2,6 +2,7 @@ from rest_framework import serializers
 from rest_framework.fields import SerializerMethodField
 from .models import *
 from django.db.models import Sum
+from django.db.models.functions import TruncMonth
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -214,8 +215,8 @@ class StudentSafeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
-                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'tarif', 'imtiyoz',
-                  'payments', 'total_payment', 'accepted_date', 'group', 'passport']
+                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'imtiyoz',
+                  'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course', 'gender']
         read_only_fields = ['accepted_date']
 
     def get_picture(self, obj):
@@ -240,7 +241,7 @@ class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
-                  'direction', 'floor', 'room', 'phone', 'picture', 'tarif', 'imtiyoz', 'accepted_date', 'passport', 'group']
+                  'direction', 'floor', 'room', 'phone', 'picture', 'imtiyoz', 'accepted_date', 'passport', 'group', 'course', 'gender']
         read_only_fields = ['accepted_date']
 
     def validate(self, attrs):
@@ -364,3 +365,28 @@ class DashboardSerializer(serializers.Serializer):
     payments = PaymentsStatsSerializer()
     applications = ApplicationsStatsSerializer()
     recent_applications = RecentApplicationSerializer(many=True)
+
+
+class MonthlyRevenueSerializer(serializers.Serializer):
+    month = serializers.CharField()
+    revenue = serializers.IntegerField()
+
+    @staticmethod
+    def get_monthly_revenue_for_user(user):
+        queryset = (
+            Payment.objects
+            .filter(
+                status='APPROVED',
+                application__dormitory__admin=user
+            )
+            .annotate(month=TruncMonth('paid_date'))
+            .values('month')
+            .annotate(revenue=Sum('amount'))
+            .order_by('month')
+        )
+
+        return [
+            {"month": item['month'].strftime('%Y-%m'), "revenue": item['revenue']}
+            for item in queryset
+        ]
+
