@@ -29,14 +29,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'channels',
-    # 'main',
+    # 'channels',
+    'main',
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_yasg',
     'corsheaders',
     'django_filters',
-    'main.apps.MainConfig',
+    # 'main.apps.MainConfig',
 ]
 
 # ASGI_APPLICATION = 'core.asgi.application'
