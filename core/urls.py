@@ -30,6 +30,10 @@ urlpatterns = [
 ]
 
 urlpatterns += [
+    path('register/', StudentRegisterCreateAPIView.as_view()),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
+    path('profile/', UserProfileView.as_view(), name='user-profile'),
+
     path('users/', UserListAPIView.as_view(), name='user-list'),
     path('user/create/', UserCreateAPIView.as_view(), name='user-create'),
     path('users/<int:pk>/', UserDetailAPIView.as_view(), name='user-detail'),
@@ -79,6 +83,9 @@ urlpatterns += [
 
     path('monthly_revenue/', MonthlyRevenueAPIView.as_view(), name='monthly-revenue'),
     path('room_status_stats/', RoomStatusStatsAPIView.as_view(), name='room-status-stats'),
+
+    path('tasks/', TasksListCreateAPIView.as_view(), name='task-list'),
+    path('tasks/<int:pk>/', TaskDetailAPIView.as_view(), name='task-detail'),
 ]
 
 urlpatterns += [

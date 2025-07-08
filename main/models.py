@@ -1,9 +1,12 @@
 from datetime import date
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
+    email = models.EmailField(unique=True, blank=True, null=True)
     role = models.CharField(choices=(('student', 'student'), ('admin', 'admin')), max_length=20)
 
     class Meta:
@@ -12,6 +15,20 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    image = models.ImageField(upload_to='user_profiles/', blank=True, null=True)
+    bio = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    birth_date = models.DateField(blank=True, null=True)
+    # Qo‘shimcha maydonlar:
+    address = models.CharField(max_length=255, blank=True, null=True)
+    telegram = models.CharField(max_length=64, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.user.username} profili"
 
 
 class Province(models.Model):
@@ -44,6 +61,14 @@ class University(models.Model):
         return self.name
 
 
+class Amenity(models.Model):
+    name = models.CharField(max_length=120)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Dormitory(models.Model):
     name = models.CharField(max_length=120)
     address = models.CharField(max_length=255)
@@ -55,12 +80,9 @@ class Dormitory(models.Model):
     year_price = models.IntegerField(blank=True, null=True)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
+    rating = models.PositiveIntegerField(blank=True, null=True, validators=[MinValueValidator(1), MaxValueValidator(5)]) # validator
 
-    #qo'shimcha qulayliklar
-    has_wifi = models.BooleanField(default=False)
-    has_library = models.BooleanField(default=False)
-    has_gym = models.BooleanField(default=False)
-    has_classroom = models.BooleanField(default=False)
+    amenities = models.ManyToManyField(Amenity, related_name='amenities')
 
     class Meta:
         verbose_name = 'Dormitory'
@@ -120,6 +142,10 @@ class Student(models.Model):
         ('Erkak', 'Erkak'),
         ('Ayol', 'Ayol'),
     )
+    STATUS_CHOICES = (
+        ('Qarzdor', 'Qarzdor'),
+        ('Haqdor', 'Haqdor'),
+    )
     name = models.CharField(max_length=120)
     last_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
     middle_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
@@ -136,8 +162,20 @@ class Student(models.Model):
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students')
     phone = models.CharField(blank=True, null=True)
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True) #yangi
-    imtiyoz = models.BooleanField(default=False)
+    privilege = models.BooleanField(default=False)
     accepted_date = models.DateField(auto_now_add=True)
+    status = models.CharField(max_length=120, choices=STATUS_CHOICES, default='Qarzdor')
+
+    def check_and_update_debt(self):
+        last_payment = self.payment_set.order_by('-valid_until').first()
+        if not last_payment or last_payment.valid_until < timezone.now().date():
+            if self.status != 'qarzdor':
+                self.status = 'qarzdor'
+                self.save()
+        else:
+            if self.status != 'haqdor':
+                self.status = 'haqdor'
+                self.save()
 
     class Meta:
         verbose_name = 'Student'
@@ -148,10 +186,16 @@ class Student(models.Model):
 
 
 class Application(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'PENDING'),
+        ('APPROVED', 'APPROVED'),
+        ('REJECTED', 'REJECTED'),
+        ('CANCELLED', 'CANCELLED')
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
-    status = models.CharField(choices=(('PENDING', 'PENDING'), ('APPROVED', 'APPROVED'), ('REJECTED', 'REJECTED'),
-                                       ('CANCELLED', 'CANCELLED')), max_length=20)
+    status = models.CharField(choices=STATUS_CHOICES, max_length=20, default='PENDING')
     comment = models.TextField(blank=True, null=True)
     document = models.FileField(blank=True, null=True)
     name = models.CharField(max_length=255)
@@ -188,3 +232,19 @@ class Payment(models.Model):
 
     def __str__(self):
         return self.student.name
+
+
+class Task(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Kutilmoqda'),
+        ('IN_PROGRESS', 'Jarayonda'),
+        ('COMPLETED', 'Bajarilgan'),
+    )
+    status = models.CharField(choices=STATUS_CHOICES, max_length=20, default='PENDING')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title

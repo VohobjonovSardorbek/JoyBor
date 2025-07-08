@@ -2,6 +2,7 @@ import openpyxl
 from django.http import HttpResponse
 from django.utils.timezone import now
 from django.shortcuts import get_object_or_404
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.generics import *
@@ -16,7 +17,7 @@ from drf_yasg import openapi
 from django.db.models import Count, Sum, F, Case, When, Value, IntegerField, Q
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser
-from .filters import StudentFilter
+from .filters import StudentFilter, ApplicationFilter, TaskFilter
 from django.utils.dateparse import parse_date
 
 
@@ -33,6 +34,37 @@ class UserListAPIView(ListAPIView):
             return User.objects.all()
         else:
             return User.objects.filter(id=user.id)
+
+
+class UserProfileView(RetrieveUpdateAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_object(self):
+        return self.request.user.profile
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(request_body=ChangePasswordSerializer)
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        user = request.user
+
+        if serializer.is_valid():
+            if not user.check_password(serializer.validated_data['old_password']):
+                return Response({"old_password": "Eski parol noto'g'ri!"}, status=status.HTTP_400_BAD_REQUEST)
+            user.set_password(serializer.validated_data['new_password'])
+            user.save()
+            return Response({"detail": "Parol muvaffaqiyatli o'zgartirildi!"})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class StudentRegisterCreateAPIView(CreateAPIView):
+    serializer_class = StudentRegisterSerializer
+    permission_classes = [AllowAny]
 
 
 class UserCreateAPIView(CreateAPIView):
@@ -490,6 +522,8 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
 class ApplicationListAPIView(ListAPIView):
     serializer_class = ApplicationSafeSerializer
     permission_classes = [IsDormitoryAdmin]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ApplicationFilter
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -499,18 +533,19 @@ class ApplicationListAPIView(ListAPIView):
         if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Application.objects.filter(dormitory=dormitory)
-        return Application.objects.none()
+        else:
+            return Application.objects.filter(user=user)
 
 
 class ApplicationCreateAPIView(CreateAPIView):
     serializer_class = ApplicationSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     queryset = Application.objects.all()
 
 
 class ApplicationDetailAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = ApplicationSerializer
-    permission_classes = [IsDormitoryAdmin]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -520,7 +555,8 @@ class ApplicationDetailAPIView(RetrieveUpdateDestroyAPIView):
         if Dormitory.objects.filter(admin=user).exists():
             dormitory = Dormitory.objects.get(admin=user)
             return Application.objects.filter(dormitory=dormitory)
-        return Application.objects.none()
+        else:
+            return Application.objects.filter(user=user)
 
 
 class PaymentListAPIView(ListAPIView):
@@ -531,7 +567,7 @@ class PaymentListAPIView(ListAPIView):
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
-            return Application.objects.none()
+            return Payment.objects.none()
         user = self.request.user
 
         if not Dormitory.objects.filter(admin=user).exists():
@@ -540,11 +576,11 @@ class PaymentListAPIView(ListAPIView):
         dormitory = Dormitory.objects.get(admin=user)
         queryset = Payment.objects.filter(dormitory=dormitory)
 
-        from_date = self.request.query_params.get('date')
-        if from_date:
-            parsed_date = parse_date(from_date)
+        at_date = self.request.query_params.get('date')
+        if at_date:
+            parsed_date = parse_date(at_date)
             if parsed_date:
-                queryset = queryset.filter(paid_date__gte=parsed_date)
+                queryset = queryset.filter(paid_date=parsed_date)
 
         return queryset
 
@@ -743,7 +779,6 @@ class RoomStatusStatsAPIView(APIView):
     permission_classes = [IsDormitoryAdmin]
 
     def get(self, request):
-
         user = request.user
 
         rooms = Room.objects.filter(floor__dormitory__admin=user)
@@ -757,3 +792,31 @@ class RoomStatusStatsAPIView(APIView):
             'partially_occupied': partially,
             'fully_occupied': fully
         })
+
+
+class TasksListCreateAPIView(ListCreateAPIView):
+    serializer_class = TaskSerializer
+    permission_classes = [IsDormitoryAdmin]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TaskFilter
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Task.objects.none()
+
+        user = self.request.user
+        return Task.objects.filter(user=user).order_by('-created_at')
+
+
+class TaskDetailAPIView(RetrieveUpdateDestroyAPIView):
+    serializer_class = TaskSerializer
+    permission_classes = [IsDormitoryAdmin]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Task.objects.none()
+
+        user = self.request.user
+        return Task.objects.filter(user=user).order_by('-created_at')
+
+

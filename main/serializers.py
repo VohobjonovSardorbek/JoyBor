@@ -3,12 +3,13 @@ from rest_framework.fields import SerializerMethodField
 from .models import *
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
+from django.contrib.auth.password_validation import validate_password
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'password', 'role']
+        fields = ['id', 'username', 'password', 'role', 'email']
         extra_kwargs = {'password': {'write_only': True}}
 
     def validate(self, attrs):
@@ -26,6 +27,58 @@ class UserSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password')
         user = User(**validated_data)
         user.set_password(password)
+        user.save()
+        return user
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserProfile
+        fields = ['image', 'bio', 'phone', 'birth_date', 'address', 'telegram']
+
+    def get_image(self, obj):
+        request = self.context.get('request')
+        if obj.image and hasattr(obj.image, 'url'):
+            if request is not None:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+    def validate_new_password(self, value):
+        validate_password(value)
+        return value
+
+
+class StudentRegisterSerializer(serializers.ModelSerializer):
+    password2 = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['first_name', 'username', 'password', 'password2', 'email']
+        extra_kwargs = {
+            'password': {'write_only': True}
+        }
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError("Parollar mos emas!")
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('password2')
+        user = User(
+            username=validated_data['username'],
+            first_name=validated_data.get('first_name', ''),
+            role='student'
+        )
+        user.set_password(validated_data['password'])
         user.save()
         return user
 
@@ -81,6 +134,11 @@ class DormitoryImageSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class AmenitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Amenity
+        fields = '__all__'
+
 
 class DormitorySafeSerializer(serializers.ModelSerializer):
     university = UniversitySerializer(read_only=True)
@@ -89,13 +147,13 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
     total_capacity = serializers.SerializerMethodField()
     available_capacity = serializers.SerializerMethodField()
     total_rooms = serializers.SerializerMethodField()
+    amenities = AmenitySerializer(read_only=True, many=True)
 
     class Meta:
         model = Dormitory
         fields = ['id', 'university', 'admin', 'name', 'address',
                   'description', 'images', 'month_price', 'year_price',
-                  'latitude', 'longitude', 'has_wifi', 'has_library',
-                  'has_gym', 'has_classroom',
+                  'latitude', 'longitude', 'amenities',
                   'total_capacity', 'available_capacity', 'total_rooms']
 
     def get_total_capacity(self, obj):
@@ -119,7 +177,7 @@ class DormitorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Dormitory
         fields = ['id', 'name', 'university', 'address', 'description', 'admin', 'month_price', 'year_price',
-                  'latitude', 'longitude', 'has_wifi', 'has_library', 'has_gym', 'has_classroom']
+                  'latitude', 'longitude']
 
     def validate(self, attrs):
         admin = attrs.get('admin')
@@ -149,6 +207,20 @@ class FloorSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Sizga hech qanday yotoqxona biriktirilmagan")
 
         validated_data['dormitory'] = dormitory
+
+        return super().create(validated_data)
+
+
+class TaskSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ['id', 'title', 'description', 'status']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user
+
+        validated_data['user'] = user
 
         return super().create(validated_data)
 
@@ -215,7 +287,7 @@ class StudentSafeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
-                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'imtiyoz',
+                  'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'privilege',
                   'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course', 'gender']
         read_only_fields = ['accepted_date']
 
@@ -241,7 +313,7 @@ class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
-                  'direction', 'floor', 'room', 'phone', 'picture', 'imtiyoz', 'accepted_date', 'passport', 'group', 'course', 'gender']
+                  'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date', 'passport', 'group', 'course', 'gender']
         read_only_fields = ['accepted_date']
 
     def validate(self, attrs):
@@ -282,6 +354,7 @@ class StudentSerializer(serializers.ModelSerializer):
 class ApplicationSafeSerializer(serializers.ModelSerializer):
     dormitory = DormitorySafeSerializer(read_only=True)
     room = RoomSafeSerializer(read_only=True)
+    user = UserSerializer(read_only=True)
 
     class Meta:
         model = Application
@@ -295,6 +368,13 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = '__all__'
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user
+
+        validated_data['user'] = user
+        return super().create(validated_data)
 
 
 class PaymentSafeSerializer(serializers.ModelSerializer):

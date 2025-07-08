@@ -15,7 +15,7 @@ SECRET_KEY = 'django-insecure-=5%junkucgsvnl+#v8(f$6styr015$gx7*6@d=q-j@6ku!p3s(
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
@@ -39,16 +39,16 @@ INSTALLED_APPS = [
     'main.apps.MainConfig',
 ]
 
-ASGI_APPLICATION = 'core.asgi.application'
-
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [os.environ.get("REDIS_URL")],  # Redis ishga tushgan bo'lishi kerak
-        },
-    },
-}
+# ASGI_APPLICATION = 'core.asgi.application'
+#
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels_redis.core.RedisChannelLayer",
+#         "CONFIG": {
+#             "hosts": [os.environ.get("REDIS_URL")],  # Redis ishga tushgan bo'lishi kerak
+#         },
+#     },
+# }
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -167,7 +167,7 @@ if DEBUG:
 else:
     STATIC_ROOT = BASE_DIR / 'static'
 
-MEDIA_URL ='media/'
+MEDIA_URL ='/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
