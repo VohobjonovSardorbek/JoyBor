@@ -6,7 +6,7 @@ from django.utils import timezone
 
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True, blank=True, null=True)
+    email = models.EmailField(unique=False, blank=True, null=True)
     role = models.CharField(choices=(('student', 'student'), ('admin', 'admin')), max_length=20)
 
     class Meta:
