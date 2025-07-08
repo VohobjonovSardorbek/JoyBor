@@ -163,7 +163,7 @@ class Student(models.Model):
     phone = models.CharField(blank=True, null=True)
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True) #yangi
     privilege = models.BooleanField(default=False)
-    accepted_date = models.DateField(auto_now_add=True, default=timezone.now)
+    accepted_date = models.DateField(auto_now_add=True)
     status = models.CharField(max_length=120, choices=STATUS_CHOICES, default='Qarzdor')
 
     def check_and_update_debt(self):
