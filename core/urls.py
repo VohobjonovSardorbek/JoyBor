@@ -86,6 +86,7 @@ urlpatterns += [
 
     path('tasks/', TasksListCreateAPIView.as_view(), name='task-list'),
     path('tasks/<int:pk>/', TaskDetailAPIView.as_view(), name='task-detail'),
+    path('recent_activity/', RecentActivityAPIView.as_view(), name='recent-activity'),
 ]
 
 urlpatterns += [

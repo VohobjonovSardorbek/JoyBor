@@ -19,6 +19,8 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser
 from .filters import StudentFilter, ApplicationFilter, TaskFilter
 from django.utils.dateparse import parse_date
+from django.utils.timesince import timesince
+from django.utils import timezone
 
 
 class UserListAPIView(ListAPIView):
@@ -42,7 +44,8 @@ class UserProfileView(RetrieveUpdateAPIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get_object(self):
-        return self.request.user.profile
+        profile, created = UserProfile.objects.get_or_create(user=self.request.user)
+        return profile
 
 
 class ChangePasswordView(APIView):
@@ -87,7 +90,7 @@ class UserDetailAPIView(RetrieveUpdateDestroyAPIView):
             return User.objects.filter(id=user.id)
 
     def perform_destroy(self, instance):
-        if self.request.user.is_superuser:
+        if not self.request.user.is_superuser:
             raise PermissionDenied("Faqat superadmin foydalanuvchi o'chira oladi")
         instance.delete()
 
@@ -148,7 +151,7 @@ class DormitoryDetailAPIView(RetrieveUpdateDestroyAPIView):
         return DormitorySerializer
 
     def perform_destroy(self, instance):
-        if self.request.user.is_superuser:
+        if not self.request.user.is_superuser:
             raise PermissionDenied('Faqat superadmin yotoqxona o\'chira oladi')
         instance.delete()
 
@@ -163,10 +166,11 @@ class DormitoryImageListAPIView(ListAPIView):
         user = self.request.user
         if user.is_superuser:
             return DormitoryImage.objects.all()
-        elif Dormitory.objects.filter(admin=user).exists():
-            dormitory = Dormitory.objects.filter(admin=user)[0]
+        try:
+            dormitory = Dormitory.objects.get(admin=user)
             return DormitoryImage.objects.filter(dormitory=dormitory)
-        return DormitoryImage.objects.none()
+        except Dormitory.DoesNotExist:
+            return DormitoryImage.objects.none()
 
 
 class DormitoryImageCreateAPIView(CreateAPIView):
@@ -190,10 +194,11 @@ class DormitoryImageDetailAPIView(RetrieveUpdateDestroyAPIView):
         user = self.request.user
         if user.is_superuser:
             return DormitoryImage.objects.all()
-        elif Dormitory.objects.filter(admin=user).exists():
-            dormitory = Dormitory.objects.filter(admin=user)[0]
+        try:
+            dormitory = Dormitory.objects.get(admin=user)
             return DormitoryImage.objects.filter(dormitory=dormitory)
-        return DormitoryImage.objects.none()
+        except Dormitory.DoesNotExist:
+            return DormitoryImage.objects.none()
 
 
 class FloorListAPIView(ListAPIView):
@@ -818,5 +823,67 @@ class TaskDetailAPIView(RetrieveUpdateDestroyAPIView):
 
         user = self.request.user
         return Task.objects.filter(user=user).order_by('-created_at')
+
+
+class RecentActivityAPIView(APIView):
+    permission_classes = [IsDormitoryAdmin]
+
+    def get(self, request):
+        user = request.user
+        dormitory = Dormitory.objects.filter(admin=user).first()
+        if not dormitory:
+            return Response({"detail": "Dormitory not found"}, status=404)
+
+        # 1. Oxirgi tasdiqlangan to‘lov
+        last_payment = Payment.objects.filter(
+            dormitory=dormitory, status='APPROVED'
+        ).order_by('-paid_date').first()
+        payment_activity = None
+        if last_payment:
+            payment_activity = {
+                "type": "payment_approved",
+                "title": "To‘lov tasdiqlandi",
+                "desc": f"{last_payment.student.name} - {last_payment.amount:,} so'm",
+                "time": timesince(last_payment.paid_date, timezone.now()) + " oldin"
+            }
+
+        # 2. Oxirgi ariza
+        last_application = Application.objects.filter(
+            dormitory=dormitory
+        ).order_by('-created_at').first()
+        application_activity = None
+        if last_application:
+            application_activity = {
+                "type": "new_application",
+                "title": "Yangi ariza",
+                "desc": f"{last_application.name} - {last_application.comment or ''}",
+                "time": timesince(last_application.created_at, timezone.now()) + " oldin"
+            }
+
+        # 3. To‘lov kechikishi (qarzdor talabalar)
+        debtors = Student.objects.filter(
+            dormitory=dormitory,
+            status='Qarzdor'
+        )
+        debt_activity = None
+        if debtors.exists():
+            last_debt = debtors.order_by('-accepted_date').first()
+            debt_activity = {
+                "type": "debt",
+                "title": "To‘lov kechikishi",
+                "desc": f"{debtors.count()} ta talaba qarzdor",
+                "time": timesince(last_debt.accepted_date, timezone.now()) + " oldin"
+            }
+
+        # Natijani yig‘amiz
+        activities = []
+        if payment_activity:
+            activities.append(payment_activity)
+        if application_activity:
+            activities.append(application_activity)
+        if debt_activity:
+            activities.append(debt_activity)
+
+        return Response({"activities": activities})
 
 
