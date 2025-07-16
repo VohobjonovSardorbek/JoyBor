@@ -544,26 +544,44 @@ class MonthlyRevenueSerializer(serializers.Serializer):
         ]
 
 
-class ApartmentSafeSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()  # yoki UserSerializer(read_only=True)
+class ApartmentImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApartmentImage
+        fields = ['id', 'image']
 
+class ApartmentSafeSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()
+    images = ApartmentImageSerializer(read_only=True, many=True)
     class Meta:
         model = Apartment
         fields = '__all__'
 
 class ApartmentSerializer(serializers.ModelSerializer):
+    images = ApartmentImageSerializer(many=True, required=False)
     class Meta:
         model = Apartment
-        exclude = ['user']  # user maydoni frontenddan kelmaydi
+        exclude = ['user']
 
     def create(self, validated_data):
+        images_data = validated_data.pop('images', None)
         request = self.context.get('request')
         validated_data['user'] = request.user
-        return super().create(validated_data)
+        apartment = Apartment.objects.create(**validated_data)
+        if images_data:
+            for image_data in images_data:
+                ApartmentImage.objects.create(apartment=apartment, **image_data)
+        return apartment
 
     def update(self, instance, validated_data):
-        # user ni o‘zgartirmaslik uchun
+        images_data = validated_data.pop('images', None)
         validated_data.pop('user', None)
-        return super().update(instance, validated_data)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if images_data is not None:
+            instance.images.all().delete()
+            for image_data in images_data:
+                ApartmentImage.objects.create(apartment=instance, **image_data)
+        return instance
 
 
