@@ -20,7 +20,9 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from .filters import StudentFilter, ApplicationFilter, TaskFilter
 from django.utils.dateparse import parse_date
 from django.utils.timesince import timesince
+from django.utils.timezone import localtime
 from django.utils import timezone
+from .serializers import UserProfileUpdateSerializer
 
 
 class UserListAPIView(ListAPIView):
@@ -39,7 +41,7 @@ class UserListAPIView(ListAPIView):
 
 
 class UserProfileView(RetrieveUpdateAPIView):
-    serializer_class = UserProfileSerializer
+    serializer_class = UserProfileUpdateSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
@@ -67,6 +69,11 @@ class ChangePasswordView(APIView):
 
 class StudentRegisterCreateAPIView(CreateAPIView):
     serializer_class = StudentRegisterSerializer
+    permission_classes = [AllowAny]
+
+
+class TenantRegisterAPIView(CreateAPIView):
+    serializer_class = TenantRegisterSerializer
     permission_classes = [AllowAny]
 
 
@@ -290,12 +297,12 @@ class EveryAvailableRoomsAPIView(ListAPIView):
             return Room.objects.none()
 
         user = self.request.user
-        dormitories = Dormitory.objects.filter(admin=user)
+        dormitory = Dormitory.objects.filter(admin=user).first()
 
-        if not dormitories.exists():
+        if not dormitory.exists():
             return Room.objects.none()
 
-        floors = Floor.objects.filter(dormitory__in=dormitories)
+        floors = Floor.objects.filter(dormitory=dormitory)
         rooms = Room.objects.filter(floor__in=floors).exclude(status='FULLY_OCCUPIED')
 
         floor_id = self.request.query_params.get('floor')
@@ -526,7 +533,7 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 class ApplicationListAPIView(ListAPIView):
     serializer_class = ApplicationSafeSerializer
-    permission_classes = [IsDormitoryAdmin]
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ApplicationFilter
 
@@ -844,7 +851,7 @@ class RecentActivityAPIView(APIView):
                 "type": "payment_approved",
                 "title": "To‘lov tasdiqlandi",
                 "desc": f"{last_payment.student.name} - {last_payment.amount:,} so'm",
-                "time": timesince(last_payment.paid_date, timezone.now()) + " oldin"
+                "time": timesince(localtime(last_payment.paid_date), timezone.now()) + " oldin"
             }
 
         # 2. Oxirgi ariza
@@ -857,7 +864,7 @@ class RecentActivityAPIView(APIView):
                 "type": "new_application",
                 "title": "Yangi ariza",
                 "desc": f"{last_application.name} - {last_application.comment or ''}",
-                "time": timesince(last_application.created_at, timezone.now()) + " oldin"
+                "time": timesince(localtime(last_application.created_at), timezone.now()) + " oldin"
             }
 
         # 3. To‘lov kechikishi (qarzdor talabalar)
@@ -872,7 +879,7 @@ class RecentActivityAPIView(APIView):
                 "type": "debt",
                 "title": "To‘lov kechikishi",
                 "desc": f"{debtors.count()} ta talaba qarzdor",
-                "time": timesince(last_debt.accepted_date, timezone.now()) + " oldin"
+                "time": timesince(localtime(last_debt.accepted_date), timezone.now()) + " oldin"
             }
 
         # Natijani yig‘amiz
@@ -886,4 +893,29 @@ class RecentActivityAPIView(APIView):
 
         return Response({"activities": activities})
 
+
+class ApartmentListAPIView(ListAPIView):
+    queryset = Apartment.objects.all()
+    serializer_class = ApartmentSafeSerializer
+    permission_classes = [AllowAny]
+
+class ApartmentDetailAPIView(RetrieveAPIView):
+    queryset = Apartment.objects.all()
+    serializer_class = ApartmentSafeSerializer
+    permission_classes = [AllowAny]
+
+class ApartmentCreateAPIView(CreateAPIView):
+    serializer_class = ApartmentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+class ApartmentUpdateAPIView(UpdateAPIView):
+    queryset = Apartment.objects.all()
+    serializer_class = ApartmentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
 

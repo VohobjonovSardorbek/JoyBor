@@ -4,7 +4,17 @@ from .models import *
 from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth import get_user_model
+from .models import UserProfile
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView, UpdateAPIView
+from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.urls import path
 
+User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -31,20 +41,34 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-class UserProfileSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', required=False)
+    password = serializers.CharField(write_only=True, required=False, min_length=8)
+    image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = UserProfile
-        fields = ['image', 'bio', 'phone', 'birth_date', 'address', 'telegram']
+        fields = ['username', 'password', 'image', 'bio', 'phone', 'birth_date', 'address', 'telegram']
 
-    def get_image(self, obj):
-        request = self.context.get('request')
-        if obj.image and hasattr(obj.image, 'url'):
-            if request is not None:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
-        return None
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        password = validated_data.pop('password', None)
+
+        # Username
+        if 'username' in user_data:
+            instance.user.username = user_data['username']
+            instance.user.save()
+
+        # Password
+        if password:
+            instance.user.set_password(password)
+            instance.user.save()
+
+        # Profile fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -77,6 +101,31 @@ class StudentRegisterSerializer(serializers.ModelSerializer):
             username=validated_data['username'],
             first_name=validated_data.get('first_name', ''),
             role='student'
+        )
+        user.set_password(validated_data['password'])
+        user.save()
+        return user
+
+
+class TenantRegisterSerializer(serializers.ModelSerializer):
+    password2 = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['username', 'password', 'password2', 'email']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password2']:
+            raise serializers.ValidationError("Parollar mos emas!")
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop('password2')
+        user = User(
+            username=validated_data['username'],
+            email=validated_data.get('email', ''),
+            role='ijarachi'
         )
         user.set_password(validated_data['password'])
         user.save()
@@ -173,11 +222,12 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
 class DormitorySerializer(serializers.ModelSerializer):
     university = serializers.PrimaryKeyRelatedField(queryset=University.objects.all(), write_only=True)
     admin = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+    images = DormitoryImageSerializer(read_only=False, many=True)
 
     class Meta:
         model = Dormitory
         fields = ['id', 'name', 'university', 'address', 'description', 'admin', 'month_price', 'year_price',
-                  'latitude', 'longitude']
+                  'latitude', 'longitude', 'images']
 
     def validate(self, attrs):
         admin = attrs.get('admin')
@@ -190,6 +240,29 @@ class DormitorySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Siz tanlagan adminga allaqachon yotoqxona biriktirilgan')
 
         return attrs
+    
+    def update(self, instance, validated_data):
+        images_data = validated_data.pop('images', None)
+        # Update other fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Images update
+        if images_data is not None:
+            # Eski rasmlarni o‘chirish
+            instance.images.all().delete()
+            for image_data in images_data:
+                DormitoryImage.objects.create(dormitory=instance, **image_data)
+        return instance
+
+    def create(self, validated_data):
+        images_data = validated_data.pop('images', None)
+        dormitory = Dormitory.objects.create(**validated_data)
+        if images_data:
+            for image_data in images_data:
+                DormitoryImage.objects.create(dormitory=dormitory, **image_data)
+        return dormitory
 
 
 class FloorSerializer(serializers.ModelSerializer):
@@ -214,7 +287,7 @@ class FloorSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'title', 'description', 'status']
+        fields = ['id', 'description', 'status']
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -469,4 +542,28 @@ class MonthlyRevenueSerializer(serializers.Serializer):
             {"month": item['month'].strftime('%Y-%m'), "revenue": item['revenue']}
             for item in queryset
         ]
+
+
+class ApartmentSafeSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField()  # yoki UserSerializer(read_only=True)
+
+    class Meta:
+        model = Apartment
+        fields = '__all__'
+
+class ApartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Apartment
+        exclude = ['user']  # user maydoni frontenddan kelmaydi
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        validated_data['user'] = request.user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        # user ni o‘zgartirmaslik uchun
+        validated_data.pop('user', None)
+        return super().update(instance, validated_data)
+
 

@@ -7,7 +7,6 @@ from rest_framework_simplejwt.views import token_obtain_pair, token_refresh
 from django.conf import settings
 from django.conf.urls.static import static
 
-
 from main.views import *
 
 schema_view = get_schema_view(
@@ -87,10 +86,16 @@ urlpatterns += [
     path('tasks/', TasksListCreateAPIView.as_view(), name='task-list'),
     path('tasks/<int:pk>/', TaskDetailAPIView.as_view(), name='task-detail'),
     path('recent_activity/', RecentActivityAPIView.as_view(), name='recent-activity'),
+
+    path('register/tenant/', TenantRegisterAPIView.as_view(), name='tenant-register'),
+    path('apartments/', ApartmentListAPIView.as_view(), name='apartment-list'),
+    path('apartments/<int:pk>/', ApartmentDetailAPIView.as_view(), name='apartment-detail'),
+    path('apartments/create/', ApartmentCreateAPIView.as_view(), name='apartment-create'),
+    path('apartments/<int:pk>/update/', ApartmentUpdateAPIView.as_view(), name='apartment-update'),
 ]
 
-urlpatterns += [
-    path('token/', token_obtain_pair),
-    path('token/refresh/', token_refresh),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
+urlpatterns += [
+path('token/', token_obtain_pair),
+path('token/refresh/', token_refresh),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
