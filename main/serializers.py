@@ -457,7 +457,7 @@ class MonthlyRevenueSerializer(serializers.Serializer):
             Payment.objects
             .filter(
                 status='APPROVED',
-                application__dormitory__admin=user
+                dormitory__admin=user
             )
             .annotate(month=TruncMonth('paid_date'))
             .values('month')
