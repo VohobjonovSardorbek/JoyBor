@@ -20,7 +20,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from .filters import StudentFilter, ApplicationFilter, TaskFilter
 from django.utils.dateparse import parse_date
 from django.utils.timesince import timesince
-from django.utils.timezone import localtime
+from django.utils.timezone import localtime, now, is_naive, make_aware
 from django.utils import timezone
 from .serializers import UserProfileUpdateSerializer
 
@@ -832,6 +832,7 @@ class TaskDetailAPIView(RetrieveUpdateDestroyAPIView):
         return Task.objects.filter(user=user).order_by('-created_at')
 
 
+
 class RecentActivityAPIView(APIView):
     permission_classes = [IsDormitoryAdmin]
 
@@ -845,26 +846,36 @@ class RecentActivityAPIView(APIView):
         last_payment = Payment.objects.filter(
             dormitory=dormitory, status='APPROVED'
         ).order_by('-paid_date').first()
+
         payment_activity = None
         if last_payment:
+            paid_date = last_payment.paid_date
+            if is_naive(paid_date):
+                paid_date = make_aware(paid_date)
+
             payment_activity = {
                 "type": "payment_approved",
                 "title": "To‘lov tasdiqlandi",
                 "desc": f"{last_payment.student.name} - {last_payment.amount:,} so'm",
-                "time": timesince(localtime(last_payment.paid_date), timezone.now()) + " oldin"
+                "time": timesince(localtime(paid_date), now()) + " oldin"
             }
 
         # 2. Oxirgi ariza
         last_application = Application.objects.filter(
             dormitory=dormitory
         ).order_by('-created_at').first()
+
         application_activity = None
         if last_application:
+            created_at = last_application.created_at
+            if is_naive(created_at):
+                created_at = make_aware(created_at)
+
             application_activity = {
                 "type": "new_application",
                 "title": "Yangi ariza",
                 "desc": f"{last_application.name} - {last_application.comment or ''}",
-                "time": timesince(localtime(last_application.created_at), timezone.now()) + " oldin"
+                "time": timesince(localtime(created_at), now()) + " oldin"
             }
 
         # 3. To‘lov kechikishi (qarzdor talabalar)
@@ -872,14 +883,19 @@ class RecentActivityAPIView(APIView):
             dormitory=dormitory,
             status='Qarzdor'
         )
+
         debt_activity = None
         if debtors.exists():
             last_debt = debtors.order_by('-accepted_date').first()
+            accepted_date = last_debt.accepted_date
+            if is_naive(accepted_date):
+                accepted_date = make_aware(accepted_date)
+
             debt_activity = {
                 "type": "debt",
                 "title": "To‘lov kechikishi",
                 "desc": f"{debtors.count()} ta talaba qarzdor",
-                "time": timesince(localtime(last_debt.accepted_date), timezone.now()) + " oldin"
+                "time": timesince(localtime(accepted_date), now()) + " oldin"
             }
 
         # Natijani yig‘amiz
