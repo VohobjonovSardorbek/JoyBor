@@ -156,7 +156,7 @@ class Student(models.Model):
     middle_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
     province = models.ForeignKey(Province, on_delete=models.CASCADE, default=1)  # yangi
     district = models.ForeignKey(District, on_delete=models.CASCADE, default=1)  # yangi
-    faculty = models.CharField(max_length=120)
+    faculty = models.CharField(max_length=120, blank=True, null=True)
     direction = models.CharField(max_length=120, blank=True, null=True)  # yangi
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1, related_name='students')  # yangi

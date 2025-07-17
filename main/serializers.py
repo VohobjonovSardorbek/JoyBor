@@ -50,6 +50,12 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = ['username', 'password', 'image', 'bio', 'phone', 'birth_date', 'address', 'telegram']
 
+    def validate_username(self, value):
+        user = self.instance.user
+        if User.objects.exclude(pk=user.pk).filter(username=value).exists():
+            raise serializers.ValidationError("Bu username allaqachon mavjud.")
+        return value
+
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
         password = validated_data.pop('password', None)
