@@ -394,6 +394,16 @@ class StudentSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date', 'passport', 'group', 'course', 'gender']
         read_only_fields = ['accepted_date']
+        extra_kwargs = {
+            'course': {'required': False},
+            'gender': {'required': False},
+            'floor': {'required': False},
+            'room': {'required': False},
+            'province': {'required': False},
+            'district': {'required': False},
+            'status': {'required': False},
+            'privilege': {'required': False},
+        }
 
     def validate(self, attrs):
         room = attrs.get('room')
