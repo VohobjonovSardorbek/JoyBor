@@ -224,7 +224,7 @@ class Payment(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='payments')
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     amount = models.IntegerField()
-    paid_date = models.DateField(auto_now_add=True)
+    paid_date = models.DateTimeField(auto_now_add=True)
     valid_until = models.DateField(blank=True, null=True) #yangi
     method = models.CharField(choices=(('Cash', 'Cash'), ('Card', 'Card')), max_length=20)
     status = models.CharField(choices=(('APPROVED', 'APPROVED'), ('CANCELLED', 'CANCELLED')),
