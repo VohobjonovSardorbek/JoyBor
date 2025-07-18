@@ -889,7 +889,7 @@ class RecentActivityAPIView(APIView):
         # 1. Oxirgi tasdiqlangan to‘lov
         last_payment = Payment.objects.filter(
             dormitory=dormitory, status='APPROVED'
-        ).order_by('-paid_date').first()
+        ).order_by('-paid_date')[:30]
 
         payment_activity = None
         if last_payment:
@@ -907,7 +907,7 @@ class RecentActivityAPIView(APIView):
         # 2. Oxirgi ariza
         last_application = Application.objects.filter(
             dormitory=dormitory
-        ).order_by('-created_at').first()
+        ).order_by('-created_at')[:30]
 
         application_activity = None
         if last_application:
@@ -930,7 +930,7 @@ class RecentActivityAPIView(APIView):
 
         debt_activity = None
         if debtors.exists():
-            last_debt = debtors.order_by('-accepted_date').first()
+            last_debt = debtors.order_by('-accepted_date')[:30]
             accepted_date = last_debt.accepted_date
             if is_naive(accepted_date):
                 accepted_date = make_aware(accepted_date)
@@ -943,7 +943,7 @@ class RecentActivityAPIView(APIView):
             }
 
         # 4. Yangi talaba qo‘shilgan activity
-        last_student = Student.objects.filter(dormitory=dormitory).order_by('-accepted_date').first()
+        last_student = Student.objects.filter(dormitory=dormitory).order_by('-accepted_date')[:30]
 
         student_activity = None
         if last_student:
