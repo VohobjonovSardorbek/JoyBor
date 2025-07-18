@@ -1,12 +1,14 @@
 import openpyxl
 from django.http import HttpResponse
-from django.utils.timezone import now
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.generics import *
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+
 from .permissions import *
 from .serializers import *
 from .models import *
@@ -71,10 +73,26 @@ class StudentRegisterCreateAPIView(CreateAPIView):
     serializer_class = StudentRegisterSerializer
     permission_classes = [AllowAny]
 
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        user = User.objects.get(username=response.data['username'])
+        refresh = RefreshToken.for_user(user)
+        response.data['refresh'] = str(refresh)
+        response.data['access'] = str(refresh.access_token)
+        return response
+
 
 class TenantRegisterAPIView(CreateAPIView):
     serializer_class = TenantRegisterSerializer
     permission_classes = [AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        user = User.objects.get(username=response.data['username'])
+        refresh = RefreshToken.for_user(user)
+        response.data['refresh'] = str(refresh)
+        response.data['access'] = str(refresh.access_token)
+        return response
 
 
 class UserCreateAPIView(CreateAPIView):
@@ -100,6 +118,10 @@ class UserDetailAPIView(RetrieveUpdateDestroyAPIView):
         if not self.request.user.is_superuser:
             raise PermissionDenied("Faqat superadmin foydalanuvchi o'chira oladi")
         instance.delete()
+
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 
 class UniversityListAPIView(ListAPIView):
@@ -137,6 +159,15 @@ class MyDormitoryAPIView(RetrieveAPIView):
 class MyDormitoryUpdateAPIView(UpdateAPIView):
     permission_classes = [IsDormitoryAdmin]
     serializer_class = DormitorySerializer
+    # parser_classes = [MultiPartParser, FormParser]
+    #
+    # @swagger_auto_schema(auto_schema=None)
+    # def put(self, request, *args, **kwargs):
+    #     return super().post(request, *args, **kwargs)
+    #
+    # @swagger_auto_schema(auto_schema=None)
+    # def patch(self, request, *args, **kwargs):
+    #     return super().post(request, *args, **kwargs)
 
     def get_object(self):
         return get_object_or_404(Dormitory, admin=self.request.user)
@@ -146,11 +177,25 @@ class DormitoryCreateAPIView(CreateAPIView):
     queryset = Dormitory.objects.all()
     serializer_class = DormitorySerializer
     permission_classes = [IsAdmin]
+    # parser_classes = [MultiPartParser, FormParser]
+    #
+    # @swagger_auto_schema(auto_schema=None)
+    # def post(self, request, *args, **kwargs):
+    #     return super().post(request, *args, **kwargs)
 
 
 class DormitoryDetailAPIView(RetrieveUpdateDestroyAPIView):
     queryset = Dormitory.objects.all()
     permission_classes = [IsOwnerOrIsAdmin]
+    # parser_classes = [MultiPartParser, FormParser]
+    #
+    # @swagger_auto_schema(auto_schema=None)
+    # def put(self, request, *args, **kwargs):
+    #     return super().post(request, *args, **kwargs)
+    #
+    # @swagger_auto_schema(auto_schema=None)
+    # def patch(self, request, *args, **kwargs):
+    #     return super().post(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -832,7 +877,6 @@ class TaskDetailAPIView(RetrieveUpdateDestroyAPIView):
         return Task.objects.filter(user=user).order_by('-created_at')
 
 
-
 class RecentActivityAPIView(APIView):
     permission_classes = [IsDormitoryAdmin]
 
@@ -898,6 +942,22 @@ class RecentActivityAPIView(APIView):
                 "time": timesince(localtime(accepted_date), now()) + " oldin"
             }
 
+        # 4. Yangi talaba qo‘shilgan activity
+        last_student = Student.objects.filter(dormitory=dormitory).order_by('-accepted_date').first()
+
+        student_activity = None
+        if last_student:
+            accepted_date = last_student.accepted_date
+            if is_naive(accepted_date):
+                accepted_date = make_aware(accepted_date)
+
+            student_activity = {
+                "type": "new_student",
+                "title": "Yangi talaba qo‘shildi",
+                "desc": f"{last_student.name} - {last_student.course}",
+                "time": timesince(localtime(accepted_date), now()) + " oldin"
+            }
+
         # Natijani yig‘amiz
         activities = []
         if payment_activity:
@@ -906,6 +966,8 @@ class RecentActivityAPIView(APIView):
             activities.append(application_activity)
         if debt_activity:
             activities.append(debt_activity)
+        if student_activity:
+            activities.append(student_activity)
 
         return Response({"activities": activities})
 
@@ -915,23 +977,69 @@ class ApartmentListAPIView(ListAPIView):
     serializer_class = ApartmentSafeSerializer
     permission_classes = [AllowAny]
 
+
 class ApartmentDetailAPIView(RetrieveAPIView):
     queryset = Apartment.objects.all()
     serializer_class = ApartmentSafeSerializer
     permission_classes = [AllowAny]
 
+
 class ApartmentCreateAPIView(CreateAPIView):
     serializer_class = ApartmentSerializer
     permission_classes = [IsAuthenticated]
+    # parser_classes = [MultiPartParser, FormParser]
+    #
+    # @swagger_auto_schema(auto_schema=None)
+    # def post(self, request, *args, **kwargs):
+    #     return super().post(request, *args, **kwargs)
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
 
 class ApartmentUpdateAPIView(UpdateAPIView):
     queryset = Apartment.objects.all()
     serializer_class = ApartmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsIjarachiAdmin]
+    # parser_classes = [MultiPartParser, FormParser]
+    #
+    # @swagger_auto_schema(auto_schema=None)
+    # def put(self, request, *args, **kwargs):
+    #     return super().post(request, *args, **kwargs)
+    #
+    # @swagger_auto_schema(auto_schema=None)
+    # def patch(self, request, *args, **kwargs):
+    #     return super().post(request, *args, **kwargs)
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Application.objects.none()
+        user = self.request.user
+        # Faqat o'ziga tegishli apartmentlar
+        return Apartment.objects.filter(user=user)
 
     def perform_update(self, serializer):
         serializer.save(user=self.request.user)
 
+
+class AmenityListAPIView(ListAPIView):
+    queryset = Amenity.objects.all()
+    serializer_class = AmenitySerializer
+    permission_classes = [AllowAny]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['type']
+
+
+class AmenityCreateAPIView(CreateAPIView):
+    queryset = Amenity.objects.all()
+    serializer_class = AmenitySerializer
+    permission_classes = [IsAdminOrDormitoryAdmin]
+
+
+class AmenityUpdateAPIView(UpdateAPIView):
+    queryset = Amenity.objects.all()
+    serializer_class = AmenitySerializer
+    permission_classes = [IsAdminOrDormitoryAdmin]
+
+
+class AmenityDeleteAPIView(DestroyAPIView):
+    queryset = Amenity.objects.all()
+    serializer_class = AmenitySerializer
+    permission_classes = [IsAdminOrDormitoryAdmin]

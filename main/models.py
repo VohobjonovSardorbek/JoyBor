@@ -12,7 +12,7 @@ class User(AbstractUser):
         ('ijarachi', 'ijarachi'),  # yangi
     )
     role = models.CharField(choices=ROLE_CHOICES, max_length=20)
-    email = models.EmailField(unique=False, blank=True, null=True)
+    email = models.EmailField(unique=True, blank=True, null=True)
 
     class Meta:
         verbose_name = 'User'
@@ -67,8 +67,12 @@ class University(models.Model):
 
 
 class Amenity(models.Model):
+    AMENITY_TYPE_CHOICES = (
+        ('service', 'Service'),
+    )
     name = models.CharField(max_length=120)
     is_active = models.BooleanField(default=True)
+    type = models.CharField(max_length=120, choices=AMENITY_TYPE_CHOICES, default='service')
 
     def __str__(self):
         return self.name
@@ -80,14 +84,16 @@ class Dormitory(models.Model):
     university = models.ForeignKey(University, on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
     admin = models.ForeignKey(User, on_delete=models.CASCADE)
-    #yangi
+    # yangi
     month_price = models.IntegerField(blank=True, null=True)
     year_price = models.IntegerField(blank=True, null=True)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
-    rating = models.PositiveIntegerField(blank=True, null=True, validators=[MinValueValidator(1), MaxValueValidator(5)]) # validator
+    rating = models.PositiveIntegerField(blank=True, null=True,
+                                         validators=[MinValueValidator(1), MaxValueValidator(5)])  # validator
+    distance_to_university = models.IntegerField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
 
-    amenities = models.ManyToManyField(Amenity, related_name='amenities')
+    amenities = models.ManyToManyField(Amenity, related_name='dormitories')
 
     class Meta:
         verbose_name = 'Dormitory'
@@ -99,7 +105,7 @@ class Dormitory(models.Model):
 
 class DormitoryImage(models.Model):
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='dormitory_images' ,blank=True, null=True)
+    image = models.ImageField(upload_to='dormitory_images', blank=True, null=True)
 
     def __str__(self):
         return self.dormitory.name
@@ -162,11 +168,11 @@ class Student(models.Model):
     floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1, related_name='students')  # yangi
     passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
     group = models.CharField(max_length=120, blank=True, null=True)
-    course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs') #yangi
+    course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs')  # yangi
     gender = models.CharField(max_length=120, choices=Gender_CHOICES, default='Erkak')
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students', default=1)
     phone = models.CharField(blank=True, null=True)
-    picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True) #yangi
+    picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True)  # yangi
     privilege = models.BooleanField(default=False)
     accepted_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=120, choices=STATUS_CHOICES, default='Qarzdor')
@@ -225,11 +231,11 @@ class Payment(models.Model):
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     amount = models.IntegerField()
     paid_date = models.DateTimeField(auto_now_add=True)
-    valid_until = models.DateField(blank=True, null=True) #yangi
+    valid_until = models.DateField(blank=True, null=True)  # yangi
     method = models.CharField(choices=(('Cash', 'Cash'), ('Card', 'Card')), max_length=20)
     status = models.CharField(choices=(('APPROVED', 'APPROVED'), ('CANCELLED', 'CANCELLED')),
                               max_length=20)
-    comment = models.TextField(blank=True, null=True) # yangi
+    comment = models.TextField(blank=True, null=True)  # yangi
 
     class Meta:
         verbose_name = 'Payment'
@@ -251,7 +257,7 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.title
+        return self.description
 
 
 class Apartment(models.Model):
@@ -298,6 +304,7 @@ class Apartment(models.Model):
 
     def __str__(self):
         return self.title_uz
+
 
 class ApartmentImage(models.Model):
     apartment = models.ForeignKey(Apartment, on_delete=models.CASCADE, related_name='images')

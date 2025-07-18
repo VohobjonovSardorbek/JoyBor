@@ -32,6 +32,7 @@ urlpatterns += [
     path('register/', StudentRegisterCreateAPIView.as_view()),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
+    path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
 
     path('users/', UserListAPIView.as_view(), name='user-list'),
     path('user/create/', UserCreateAPIView.as_view(), name='user-create'),
@@ -92,6 +93,11 @@ urlpatterns += [
     path('apartments/<int:pk>/', ApartmentDetailAPIView.as_view(), name='apartment-detail'),
     path('apartments/create/', ApartmentCreateAPIView.as_view(), name='apartment-create'),
     path('apartments/<int:pk>/update/', ApartmentUpdateAPIView.as_view(), name='apartment-update'),
+
+    path('amenities/', AmenityListAPIView.as_view(), name='amenity-list'),
+    path('amenities/create/', AmenityCreateAPIView.as_view(), name='amenity-create'),
+    path('amenities/<int:pk>/update/', AmenityUpdateAPIView.as_view(), name='amenity-update'),
+    path('amenities/<int:pk>/delete/', AmenityDeleteAPIView.as_view(), name='amenity-delete'),
 ]
 
 

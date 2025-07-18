@@ -4,6 +4,8 @@ from django.dispatch import receiver
 # from asgiref.sync import async_to_sync
 from .models import Application, Payment, User, UserProfile
 from django.utils import timezone
+
+
 # from .serializers import ApplicationSerializer
 
 
@@ -12,7 +14,7 @@ def update_student_status_on_payment(sender, instance, created, **kwargs):
     if created:
         student = instance.student
         # Faqat shu studentga bog'langan paymentlarni tekshiramiz
-        last_payment = student.payment_set.order_by('-valid_until').first()
+        last_payment = student.payments.order_by('-valid_until').first()
         if last_payment and last_payment.valid_until >= timezone.now().date():
             student.status = 'haqdor'
             student.save()
