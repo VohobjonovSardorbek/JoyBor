@@ -32,7 +32,6 @@ urlpatterns += [
     path('register/', StudentRegisterCreateAPIView.as_view()),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
-    path('login/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
 
     path('users/', UserListAPIView.as_view(), name='user-list'),
     path('user/create/', UserCreateAPIView.as_view(), name='user-create'),
@@ -102,6 +101,6 @@ urlpatterns += [
 
 
 urlpatterns += [
-path('token/', token_obtain_pair),
+path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
 path('token/refresh/', token_refresh),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
