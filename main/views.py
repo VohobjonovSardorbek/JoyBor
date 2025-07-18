@@ -886,88 +886,77 @@ class RecentActivityAPIView(APIView):
         if not dormitory:
             return Response({"detail": "Dormitory not found"}, status=404)
 
-        # 1. Oxirgi tasdiqlangan to‘lov
-        last_payment = Payment.objects.filter(
-            dormitory=dormitory, status='APPROVED'
-        ).order_by('-paid_date')[:30]
+        activities = []
 
-        payment_activity = None
-        if last_payment:
-            paid_date = last_payment.paid_date
+        # 1. Oxirgi 15 ta tasdiqlangan to‘lov
+        payments = Payment.objects.filter(
+            dormitory=dormitory, status='APPROVED'
+        ).order_by('-paid_date')[:15]
+        for payment in payments:
+            paid_date = payment.paid_date
             if is_naive(paid_date):
                 paid_date = make_aware(paid_date)
-
-            payment_activity = {
+            activities.append({
                 "type": "payment_approved",
                 "title": "To‘lov tasdiqlandi",
-                "desc": f"{last_payment.student.name} - {last_payment.amount:,} so'm",
-                "time": timesince(localtime(paid_date), now()) + " oldin"
-            }
+                "desc": f"{payment.student.name} - {payment.amount:,} so'm",
+                "time": timesince(localtime(paid_date), now()) + " oldin",
+                "datetime": paid_date,
+            })
 
-        # 2. Oxirgi ariza
-        last_application = Application.objects.filter(
+        # 2. Oxirgi 15 ta ariza
+        applications = Application.objects.filter(
             dormitory=dormitory
-        ).order_by('-created_at')[:30]
-
-        application_activity = None
-        if last_application:
-            created_at = last_application.created_at
+        ).order_by('-created_at')[:15]
+        for application in applications:
+            created_at = application.created_at
             if is_naive(created_at):
                 created_at = make_aware(created_at)
-
-            application_activity = {
+            activities.append({
                 "type": "new_application",
                 "title": "Yangi ariza",
-                "desc": f"{last_application.name} - {last_application.comment or ''}",
-                "time": timesince(localtime(created_at), now()) + " oldin"
-            }
+                "desc": f"{application.name} - {application.comment or ''}",
+                "time": timesince(localtime(created_at), now()) + " oldin",
+                "datetime": created_at,
+            })
 
-        # 3. To‘lov kechikishi (qarzdor talabalar)
+        # 3. Oxirgi 15 ta qarzdor talaba
         debtors = Student.objects.filter(
             dormitory=dormitory,
             status='Qarzdor'
-        )
-
-        debt_activity = None
-        if debtors.exists():
-            last_debt = debtors.order_by('-accepted_date')[:30]
-            accepted_date = last_debt.accepted_date
+        ).order_by('-accepted_date')[:15]
+        for debtor in debtors:
+            accepted_date = debtor.accepted_date
             if is_naive(accepted_date):
                 accepted_date = make_aware(accepted_date)
-
-            debt_activity = {
+            activities.append({
                 "type": "debt",
                 "title": "To‘lov kechikishi",
-                "desc": f"{debtors.count()} ta talaba qarzdor",
-                "time": timesince(localtime(accepted_date), now()) + " oldin"
-            }
+                "desc": f"{debtor.name} - {debtor.course}",
+                "time": timesince(localtime(accepted_date), now()) + " oldin",
+                "datetime": accepted_date,
+            })
 
-        # 4. Yangi talaba qo‘shilgan activity
-        last_student = Student.objects.filter(dormitory=dormitory).order_by('-accepted_date')[:30]
-
-        student_activity = None
-        if last_student:
-            accepted_date = last_student.accepted_date
+        # 4. Oxirgi 15 ta yangi talaba
+        students = Student.objects.filter(dormitory=dormitory).order_by('-accepted_date')[:15]
+        for student in students:
+            accepted_date = student.accepted_date
             if is_naive(accepted_date):
                 accepted_date = make_aware(accepted_date)
-
-            student_activity = {
+            activities.append({
                 "type": "new_student",
                 "title": "Yangi talaba qo‘shildi",
-                "desc": f"{last_student.name} - {last_student.course}",
-                "time": timesince(localtime(accepted_date), now()) + " oldin"
-            }
+                "desc": f"{student.name} - {student.course}",
+                "time": timesince(localtime(accepted_date), now()) + " oldin",
+                "datetime": accepted_date,
+            })
 
-        # Natijani yig‘amiz
-        activities = []
-        if payment_activity:
-            activities.append(payment_activity)
-        if application_activity:
-            activities.append(application_activity)
-        if debt_activity:
-            activities.append(debt_activity)
-        if student_activity:
-            activities.append(student_activity)
+        # Barchasini vaqt bo‘yicha tartiblaymiz va 15 tasini olamiz
+        activities = sorted(activities, key=lambda x: x['datetime'], reverse=True)[:15]
+
+        # datetime ni chiqarib tashlaymiz
+        for act in activities:
+            act.pop('datetime', None)
 
         return Response({"activities": activities})
 
