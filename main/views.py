@@ -699,7 +699,6 @@ class ExportPaymentExcelAPIView(APIView):
                 payment.student.name,
                 payment.student.last_name or '',
                 payment.student.course or '',
-                f"{payment.student.room.number}" if payment.student.room else '',
                 payment.amount,
                 payment.paid_date.strftime('%Y-%m-%d %H:%M') if payment.paid_date else '',
                 payment.valid_until.strftime('%Y-%m-%d') if payment.valid_until else '',
