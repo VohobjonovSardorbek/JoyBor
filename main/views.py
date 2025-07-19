@@ -495,11 +495,14 @@ class ExportStudentExcelAPIView(APIView):
             'Province',
             'District',
             'Faculty',
+            'Direction',
             'Group',
             'Course',
+            'Gender',
             'Phone',
             'Passport',
-            'Imtiyoz',
+            'Privilege',
+            'Status',
             'Accepted Date'
         ])
         dormitory = get_object_or_404(Dormitory, admin=request.user)
@@ -513,12 +516,15 @@ class ExportStudentExcelAPIView(APIView):
                 student.middle_name or '',
                 student.province.name if student.province else '',
                 student.district.name if student.district else '',
-                student.faculty,
+                student.faculty or '',
+                student.direction or '',
                 student.group or '',
                 student.course or '',
+                student.gender or '',
                 student.phone or '',
                 student.passport or '',
-                student.imtiyoz,
+                'Ha' if student.privilege else 'Yo\'q',
+                student.status or '',
                 student.accepted_date.strftime('%Y-%m-%d') if student.accepted_date else ''
             ])
 
@@ -675,6 +681,8 @@ class ExportPaymentExcelAPIView(APIView):
             'ID',
             'Student Name',
             'Student Last Name',
+            'Student Course',
+            'Student Room',
             'Amount',
             'Paid Date',
             'Valid Until',
@@ -683,15 +691,17 @@ class ExportPaymentExcelAPIView(APIView):
             'Comment'
         ])
 
-        payments = Payment.objects.select_related('student').filter(dormitory=dormitory)
+        payments = Payment.objects.select_related('student', 'student__room').filter(dormitory=dormitory)
 
         for payment in payments:
             ws.append([
                 payment.id,
                 payment.student.name,
                 payment.student.last_name or '',
+                payment.student.course or '',
+                f"{payment.student.room.number}" if payment.student.room else '',
                 payment.amount,
-                payment.paid_date.strftime('%Y-%m-%d') if payment.paid_date else '',
+                payment.paid_date.strftime('%Y-%m-%d %H:%M') if payment.paid_date else '',
                 payment.valid_until.strftime('%Y-%m-%d') if payment.valid_until else '',
                 payment.method,
                 payment.status,
