@@ -39,13 +39,15 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', required=False)
-    email = serializers.EmailField(source='user.email', read_only=True)
+    email = serializers.EmailField(source='user.email', required=False)
+    first_name = serializers.CharField(source='user.first_name', required=False)
+    last_name = serializers.CharField(source='user.last_name', required=False)
     password = serializers.CharField(write_only=True, required=False, min_length=8)
     image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
         model = UserProfile
-        fields = ['username', 'email', 'password', 'image', 'bio', 'phone', 'birth_date', 'address', 'telegram']
+        fields = ['username', 'first_name', 'last_name', 'email', 'password', 'image', 'bio', 'phone', 'birth_date', 'address', 'telegram']
 
     def validate_username(self, value):
         user = self.instance.user
@@ -55,23 +57,25 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', {})
+        user = instance.user
         password = validated_data.pop('password', None)
 
-        # Username
+        # Yangilash
         if 'username' in user_data:
-            instance.user.username = user_data['username']
-            instance.user.save()
-
-        # Password
+            user.username = user_data['username']
+        if 'first_name' in user_data:
+            user.first_name = user_data['first_name']
+        if 'last_name' in user_data:
+            user.last_name = user_data['last_name']
         if password:
-            instance.user.set_password(password)
-            instance.user.save()
+            user.set_password(password)
+        user.save()
 
-        # Profile fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
         return instance
+
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -230,6 +234,12 @@ class AmenitySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'is_active', 'type']
 
 
+class RuleSafeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rule
+        fields = ['id', 'rule']
+
+
 class DormitorySafeSerializer(serializers.ModelSerializer):
     university = UniversitySerializer(read_only=True)
     admin = UserSerializer(read_only=True)
@@ -238,13 +248,14 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
     available_capacity = serializers.SerializerMethodField()
     total_rooms = serializers.SerializerMethodField()
     amenities = AmenitySerializer(many=True, read_only=True)
+    rules = RuleSafeSerializer(many=True, read_only=True)
 
     class Meta:
         model = Dormitory
         fields = ['id', 'university', 'admin', 'name', 'address',
                   'description', 'images', 'month_price', 'year_price',
                   'latitude', 'longitude', 'amenities',
-                  'total_capacity', 'available_capacity', 'total_rooms', 'distance_to_university']
+                  'total_capacity', 'available_capacity', 'total_rooms', 'distance_to_university', 'rules']
 
     def get_total_capacity(self, obj):
         return Room.objects.filter(floor__dormitory=obj).aggregate(total=Sum('capacity'))['total'] or 0
@@ -264,6 +275,7 @@ class DormitorySerializer(serializers.ModelSerializer):
     images = serializers.ListField(
         child=serializers.ImageField(), write_only=True, required=False
     )
+    distance_to_university = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Dormitory
@@ -288,6 +300,25 @@ class DormitorySerializer(serializers.ModelSerializer):
             for image in images:
                 DormitoryImage.objects.create(dormitory=instance, image=image)
         return instance
+
+
+class RuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rule
+        fields = ['id', 'rule']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user
+
+        try:
+            dormitory = Dormitory.objects.get(admin=user)
+        except Dormitory.DoesNotExist:
+            raise serializers.ValidationError('Sizga yotoqxona biriktirilmagan')
+
+        validated_data['dormitory'] = dormitory
+
+        return super().create(validated_data)
 
 
 class FloorSerializer(serializers.ModelSerializer):

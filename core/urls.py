@@ -88,6 +88,7 @@ urlpatterns += [
     path('recent_activity/', RecentActivityAPIView.as_view(), name='recent-activity'),
 
     path('register/tenant/', TenantRegisterAPIView.as_view(), name='tenant-register'),
+
     path('apartments/', ApartmentListAPIView.as_view(), name='apartment-list'),
     path('apartments/<int:pk>/', ApartmentDetailAPIView.as_view(), name='apartment-detail'),
     path('apartments/create/', ApartmentCreateAPIView.as_view(), name='apartment-create'),
@@ -97,6 +98,10 @@ urlpatterns += [
     path('amenities/create/', AmenityCreateAPIView.as_view(), name='amenity-create'),
     path('amenities/<int:pk>/update/', AmenityUpdateAPIView.as_view(), name='amenity-update'),
     path('amenities/<int:pk>/delete/', AmenityDeleteAPIView.as_view(), name='amenity-delete'),
+
+    path('rules/', RuleListAPIView.as_view(), name='rule-list'),
+    path('rules/create/', RuleCreateAPIView.as_view(), name='rule-create'),
+    # path('rules/<int:pk>/', RetrieveUpdateDestroyAPIView.as_view(), name='rule-detail'),
 ]
 
 

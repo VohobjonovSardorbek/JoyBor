@@ -110,6 +110,18 @@ class DormitoryImage(models.Model):
         return self.dormitory.name
 
 
+class Rule(models.Model):
+    dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE, related_name='rules')
+    rule = models.TextField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'Rule'
+        verbose_name_plural = 'Rules'
+
+    def __str__(self):
+        return self.rule
+
+
 class Floor(models.Model):
     name = models.CharField(max_length=120)
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)

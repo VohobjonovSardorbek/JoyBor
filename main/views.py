@@ -159,6 +159,7 @@ class MyDormitoryAPIView(RetrieveAPIView):
 class MyDormitoryUpdateAPIView(UpdateAPIView):
     permission_classes = [IsDormitoryAdmin]
     serializer_class = DormitorySerializer
+
     # parser_classes = [MultiPartParser, FormParser]
     #
     # @swagger_auto_schema(auto_schema=None)
@@ -179,7 +180,24 @@ class DormitoryCreateAPIView(CreateAPIView):
     permission_classes = [IsAdmin]
     # parser_classes = [MultiPartParser, FormParser]
     #
-    # @swagger_auto_schema(auto_schema=None)
+    # @swagger_auto_schema(
+    #     manual_parameters=[
+    #         openapi.Parameter('name', openapi.IN_FORM, type=openapi.TYPE_STRING),
+    #         openapi.Parameter('address', openapi.IN_FORM, type=openapi.TYPE_STRING),
+    #         openapi.Parameter('description', openapi.IN_FORM, type=openapi.TYPE_STRING),
+    #         openapi.Parameter('month_price', openapi.IN_FORM, type=openapi.TYPE_NUMBER),
+    #         openapi.Parameter('year_price', openapi.IN_FORM, type=openapi.TYPE_NUMBER),
+    #         openapi.Parameter('latitude', openapi.IN_FORM, type=openapi.TYPE_NUMBER),
+    #         openapi.Parameter('longitude', openapi.IN_FORM, type=openapi.TYPE_NUMBER),
+    #         openapi.Parameter(
+    #             'images',
+    #             openapi.IN_FORM,
+    #             type=openapi.TYPE_FILE,
+    #             description='Upload one or more images. Use Postman for multiple files.',
+    #             required=False
+    #         ),
+    #     ]
+    # )
     # def post(self, request, *args, **kwargs):
     #     return super().post(request, *args, **kwargs)
 
@@ -187,6 +205,7 @@ class DormitoryCreateAPIView(CreateAPIView):
 class DormitoryDetailAPIView(RetrieveUpdateDestroyAPIView):
     queryset = Dormitory.objects.all()
     permission_classes = [IsOwnerOrIsAdmin]
+
     # parser_classes = [MultiPartParser, FormParser]
     #
     # @swagger_auto_schema(auto_schema=None)
@@ -987,6 +1006,7 @@ class ApartmentUpdateAPIView(UpdateAPIView):
     queryset = Apartment.objects.all()
     serializer_class = ApartmentSerializer
     permission_classes = [IsIjarachiAdmin]
+
     # parser_classes = [MultiPartParser, FormParser]
     #
     # @swagger_auto_schema(auto_schema=None)
@@ -1032,3 +1052,34 @@ class AmenityDeleteAPIView(DestroyAPIView):
     queryset = Amenity.objects.all()
     serializer_class = AmenitySerializer
     permission_classes = [IsAdminOrDormitoryAdmin]
+
+
+class RuleListAPIView(ListAPIView):
+    serializer_class = RuleSafeSerializer
+    permission_classes = [AllowAny]
+    queryset = Rule.objects.all()
+
+
+class RuleCreateAPIView(CreateAPIView):
+    serializer_class = RuleSerializer
+    permission_classes = [IsDormitoryAdmin]
+    queryset = Rule.objects.all()
+
+
+# class RuleUpdateAPIView(RetrieveUpdateDestroyAPIView):
+#     permission_classes = [IsDormitoryAdmin]
+#     serializer_class = RuleSerializer
+#     queryset = Rule.objects.all()
+#
+#     def get_queryset(self):
+#         if getattr(self, 'swagger_fake_view', False):
+#             return Rule.objects.none()
+#
+#         user = self.request.user
+#
+#         if Dormitory.objects.filter(admin=user).exists():
+#             dormitory = Dormitory.objects.get(admin=user)
+#             return Rule.objects.filter(dormitory=dormitory)
+#         return Rule.objects.none()
+
+
