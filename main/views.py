@@ -600,6 +600,14 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
 
         room.save()
 
+    def perform_update(self, serializer):
+        instance = serializer.save()
+
+        if instance.floor and instance.room:
+            if instance.placement_status != 'Joylashdi':
+                instance.placement_status = 'Joylashdi'
+                instance.save()
+
 
 class ApplicationListAPIView(ListAPIView):
     serializer_class = ApplicationSafeSerializer

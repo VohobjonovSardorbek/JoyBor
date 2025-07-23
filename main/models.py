@@ -176,17 +176,27 @@ class Student(models.Model):
     faculty = models.CharField(max_length=120, blank=True, null=True)
     direction = models.CharField(max_length=120, blank=True, null=True)  # yangi
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
-    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, default=1, related_name='students')  # yangi
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE,blank=True, null=True, related_name='students')  # yangi
     passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
     group = models.CharField(max_length=120, blank=True, null=True)
     course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs')  # yangi
     gender = models.CharField(max_length=120, choices=Gender_CHOICES, default='Erkak')
-    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students', default=1)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students', blank=True, null=True)
     phone = models.CharField(blank=True, null=True)
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True)  # yangi
     privilege = models.BooleanField(default=False)
     accepted_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=120, choices=STATUS_CHOICES, default='Qarzdor')
+    PLACEMENT_STATUS_CHOICES = (
+        ('Qabul qilindi', 'Qabul qilindi'),
+        ('Joylashdi', 'Joylashdi'),
+    )
+
+    placement_status = models.CharField(
+        max_length=50,
+        choices=PLACEMENT_STATUS_CHOICES,
+        default='Qabul qilindi'
+    )
 
     def check_and_update_debt(self):
         last_payment = self.payment_set.order_by('-valid_until').first()

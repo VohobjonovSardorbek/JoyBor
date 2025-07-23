@@ -417,7 +417,7 @@ class StudentSafeSerializer(serializers.ModelSerializer):
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'privilege',
-                  'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course', 'gender']
+                  'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course', 'gender', 'placement_status']
         read_only_fields = ['accepted_date']
 
     def get_picture(self, obj):
@@ -469,19 +469,28 @@ class StudentSerializer(serializers.ModelSerializer):
 
         validated_data['dormitory'] = dormitory
 
+        floor = validated_data.get('floor')
+        room = validated_data.get('room')
+
+        if floor and room:
+            validated_data['placement_status'] = 'Joylashdi'
+        else:
+            validated_data['placement_status'] = 'Qabul qilindi'
+
         student = super().create(validated_data)
 
-        room = student.room
-        room.currentOccupancy = room.students.count()
+        if student.room:
+            room = student.room
+            room.currentOccupancy = room.students.count()
 
-        if room.currentOccupancy == 0:
-            room.status = 'AVAILABLE'
-        elif room.currentOccupancy < room.capacity:
-            room.status = 'PARTIALLY_OCCUPIED'
-        else:
-            room.status = 'FULLY_OCCUPIED'
+            if room.currentOccupancy == 0:
+                room.status = 'AVAILABLE'
+            elif room.currentOccupancy < room.capacity:
+                room.status = 'PARTIALLY_OCCUPIED'
+            else:
+                room.status = 'FULLY_OCCUPIED'
 
-        room.save()
+            room.save()
 
         return student
 
