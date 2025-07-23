@@ -174,6 +174,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             raise serializers.ValidationError('Login yoki parol noto‘g‘ri!')
 
         data = super().validate({'username': user.username, 'password': password})
+        data['role'] = user.role
         return data
 
 

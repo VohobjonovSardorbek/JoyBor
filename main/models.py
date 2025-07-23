@@ -90,7 +90,7 @@ class Dormitory(models.Model):
     longitude = models.FloatField(blank=True, null=True)
     rating = models.PositiveIntegerField(blank=True, null=True,
                                          validators=[MinValueValidator(1), MaxValueValidator(5)])  # validator
-    distance_to_university = models.IntegerField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
+    distance_to_university = models.FloatField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
 
     amenities = models.ManyToManyField(Amenity, related_name='dormitories')
 
@@ -283,7 +283,7 @@ class Apartment(models.Model):
     exact_address = models.CharField(max_length=255, blank=True, null=True)
     monthly_price = models.IntegerField(blank=True, null=True)
     nearby_university = models.ForeignKey(University, on_delete=models.CASCADE, related_name='apartments')
-    distance_to_university = models.IntegerField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
+    distance_to_university = models.FloatField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
 
     # Xona ma'lumotlari
     ROOM_TYPE_CHOICES = (
