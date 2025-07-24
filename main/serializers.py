@@ -502,7 +502,8 @@ class ApplicationSafeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = ['id', 'user', 'dormitory', 'status', 'comment', 'document',
-            'name', 'fio', 'city', 'village', 'university', 'phone', 'passport_image_first', 'passport_image_second', 'created_at'
+            'name', 'fio', 'city', 'village', 'university', 'phone',
+            'passport_image_first', 'passport_image_second', 'created_at', 'user_image', 'direction'
         ]
 
 
@@ -510,12 +511,13 @@ class ApplicationSerializer(serializers.ModelSerializer):
     dormitory = serializers.PrimaryKeyRelatedField(queryset=Dormitory.objects.all(), write_only=True)
     passport_image_first = serializers.ImageField(required=False)
     passport_image_second = serializers.ImageField(required=False)
+    user_image = serializers.ImageField(required=False)
 
     class Meta:
         model = Application
         fields = ['id', 'dormitory', 'status', 'comment', 'document',
             'name', 'fio', 'city', 'village', 'university', 'phone',
-            'created_at', 'passport_image_first', 'passport_image_second'
+            'created_at', 'passport_image_first', 'passport_image_second', 'user_image', 'direction'
         ]
 
     def create(self, validated_data):

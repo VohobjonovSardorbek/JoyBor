@@ -234,8 +234,10 @@ class Application(models.Model):
     city = models.CharField(blank=True, null=True, max_length=255)
     village = models.CharField(blank=True, null=True, max_length=255)
     university = models.CharField(blank=True, null=True, max_length=255)
-    phone = models.IntegerField()
+    phone = models.IntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    direction = models.CharField(blank=True, null=True, max_length=255)
+    user_image = models.ImageField(upload_to='student_pictures/', blank=True, null=True)
     passport_image_first = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     passport_image_second = models.ImageField(upload_to='passport_image/', blank=True, null=True)
 
