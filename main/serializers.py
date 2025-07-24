@@ -508,6 +508,8 @@ class ApplicationSafeSerializer(serializers.ModelSerializer):
 
 class ApplicationSerializer(serializers.ModelSerializer):
     dormitory = serializers.PrimaryKeyRelatedField(queryset=Dormitory.objects.all(), write_only=True)
+    passport_image_first = serializers.ImageField(required=False)
+    passport_image_second = serializers.ImageField(required=False)
 
     class Meta:
         model = Application
