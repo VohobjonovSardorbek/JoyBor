@@ -11,7 +11,7 @@ class User(AbstractUser):
         ('ijarachi', 'ijarachi'),  # yangi
     )
     role = models.CharField(choices=ROLE_CHOICES, max_length=20)
-    email = models.EmailField(unique=True, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True, unique=True)
 
     class Meta:
         verbose_name = 'User'
@@ -226,7 +226,6 @@ class Application(models.Model):
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
-    room = models.ForeignKey(Room, on_delete=models.CASCADE)
     status = models.CharField(choices=STATUS_CHOICES, max_length=20, default='PENDING')
     comment = models.TextField(blank=True, null=True)
     document = models.FileField(blank=True, null=True)
@@ -236,8 +235,9 @@ class Application(models.Model):
     village = models.CharField(blank=True, null=True, max_length=255)
     university = models.CharField(blank=True, null=True, max_length=255)
     phone = models.IntegerField()
-    passport = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
+    passport_image_first = models.ImageField(upload_to='passport_image/', blank=True, null=True)
+    passport_image_second = models.ImageField(upload_to='passport_image/', blank=True, null=True)
 
     class Meta:
         verbose_name = 'Application'
@@ -245,6 +245,16 @@ class Application(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class AnswerForApplication(models.Model):
+    application = models.ForeignKey(Application, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.application.name
 
 
 class Payment(models.Model):

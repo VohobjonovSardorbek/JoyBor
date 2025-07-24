@@ -1,10 +1,13 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import User, University, Dormitory, Floor, Room, Student, Application, Payment, Province, District, \
-    DormitoryImage, Amenity, Task
+    DormitoryImage, Amenity, Task, AnswerForApplication
+from django.core.exceptions import ValidationError
+from django import forms
 
 
 class UserAdmin(BaseUserAdmin):
+
     list_display = ('username', 'email', 'role', 'is_active', 'is_staff')
     search_fields = ['username', 'email']
     list_filter = ['role', 'is_active']
@@ -15,7 +18,7 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'role', 'password1', 'password2'),
+            'fields': ('username', 'role', 'email', 'password1', 'password2'),
         }),
     )
 
@@ -80,4 +83,5 @@ admin.site.register(District)
 admin.site.register(DormitoryImage)
 admin.site.register(Amenity)
 admin.site.register(Task)
+admin.site.register(AnswerForApplication)
 

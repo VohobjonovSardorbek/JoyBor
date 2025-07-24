@@ -102,6 +102,12 @@ urlpatterns += [
     path('rules/', RuleListAPIView.as_view(), name='rule-list'),
     path('rules/create/', RuleCreateAPIView.as_view(), name='rule-create'),
     # path('rules/<int:pk>/', RetrieveUpdateDestroyAPIView.as_view(), name='rule-detail'),
+
+    path('answers/', AnswerForApplicationListApiview.as_view(), name='answer-list'),
+    path('answers/<int:pk>/', AnswerForApplicationDetailAPIView.as_view(), name='answer-detail'),
+    path('answers/create/', AnswerForApplicationCreateAPIView.as_view(), name='answer-create'),
+    path('answers/<int:pk>/update/', AnswerForApplicationUpdateAPIView.as_view(), name='answer-update'),
+    path('answers/<int:pk>/delete/', AnswerForApplicationDeleteAPIView.as_view(), name='answer-delete'),
 ]
 
 

@@ -497,24 +497,23 @@ class StudentSerializer(serializers.ModelSerializer):
 
 class ApplicationSafeSerializer(serializers.ModelSerializer):
     dormitory = DormitorySafeSerializer(read_only=True)
-    room = RoomSafeSerializer(read_only=True)
     user = UserSerializer(read_only=True)
 
     class Meta:
         model = Application
-        fields = ['id', 'user', 'dormitory', 'room', 'status', 'comment', 'document',
-            'name', 'fio', 'city', 'village', 'university', 'phone', 'passport', 'created_at'
+        fields = ['id', 'user', 'dormitory', 'status', 'comment', 'document',
+            'name', 'fio', 'city', 'village', 'university', 'phone', 'passport_image_first', 'passport_image_second', 'created_at'
         ]
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
     dormitory = serializers.PrimaryKeyRelatedField(queryset=Dormitory.objects.all(), write_only=True)
-    room = serializers.PrimaryKeyRelatedField(queryset=Room.objects.all(), write_only=True)
 
     class Meta:
         model = Application
-        fields = ['id', 'user', 'dormitory', 'room', 'status', 'comment', 'document',
-            'name', 'fio', 'city', 'village', 'university', 'phone', 'passport', 'created_at'
+        fields = ['id', 'dormitory', 'status', 'comment', 'document',
+            'name', 'fio', 'city', 'village', 'university', 'phone',
+            'created_at', 'passport_image_first', 'passport_image_second'
         ]
 
     def create(self, validated_data):
@@ -675,3 +674,13 @@ class ApartmentSerializer(serializers.ModelSerializer):
             for image in images:
                 ApartmentImage.objects.create(apartment=instance, image=image)
         return instance
+
+
+class AnswerForApplicationSerializer(serializers.ModelSerializer):
+    application_name = serializers.CharField(source='application.name', read_only=True)
+    user_username = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = AnswerForApplication
+        fields = ['id', 'application', 'application_name', 'user', 'user_username', 'comment', 'created_at']
+        read_only_fields = ['created_at']
