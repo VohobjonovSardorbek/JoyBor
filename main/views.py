@@ -1047,30 +1047,30 @@ class ApartmentUpdateAPIView(UpdateAPIView):
         serializer.save(user=self.request.user)
 
 
-class AmenityListAPIView(ListAPIView):
-    queryset = Amenity.objects.all()
-    serializer_class = AmenitySerializer
-    permission_classes = [AllowAny]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['type']
+# class AmenityListAPIView(ListAPIView):
+#     queryset = Amenity.objects.all()
+#     serializer_class = AmenitySerializer
+#     permission_classes = [AllowAny]
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_fields = ['type']
 
 
-class AmenityCreateAPIView(CreateAPIView):
-    queryset = Amenity.objects.all()
-    serializer_class = AmenitySerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+# class AmenityCreateAPIView(CreateAPIView):
+#     queryset = Amenity.objects.all()
+#     serializer_class = AmenitySerializer
+#     permission_classes = [IsAdminOrDormitoryAdmin]
 
 
-class AmenityUpdateAPIView(UpdateAPIView):
-    queryset = Amenity.objects.all()
-    serializer_class = AmenitySerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+# class AmenityUpdateAPIView(UpdateAPIView):
+#     queryset = Amenity.objects.all()
+#     serializer_class = AmenitySerializer
+#     permission_classes = [IsAdminOrDormitoryAdmin]
 
 
-class AmenityDeleteAPIView(DestroyAPIView):
-    queryset = Amenity.objects.all()
-    serializer_class = AmenitySerializer
-    permission_classes = [IsAdminOrDormitoryAdmin]
+# class AmenityDeleteAPIView(DestroyAPIView):
+#     queryset = Amenity.objects.all()
+#     serializer_class = AmenitySerializer
+#     permission_classes = [IsAdminOrDormitoryAdmin]
 
 
 class RuleListAPIView(ListAPIView):

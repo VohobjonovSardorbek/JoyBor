@@ -66,12 +66,8 @@ class University(models.Model):
 
 
 class Amenity(models.Model):
-    AMENITY_TYPE_CHOICES = (
-        ('service', 'Service'),
-    )
     name = models.CharField(max_length=120)
     is_active = models.BooleanField(default=True)
-    type = models.CharField(max_length=120, choices=AMENITY_TYPE_CHOICES, default='service')
 
     def __str__(self):
         return self.name
@@ -295,48 +291,49 @@ class Task(models.Model):
 
 class Apartment(models.Model):
     # Asosiy ma'lumotlar
-    title_uz = models.CharField(max_length=255, blank=True, null=True)
-    title_ru = models.CharField(max_length=255, blank=True, null=True)
-    description_uz = models.TextField(blank=True, null=True)
-    description_ru = models.TextField(blank=True, null=True)
+    title = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
 
     # Joylashuv va narx
     province = models.ForeignKey(Province, on_delete=models.CASCADE, related_name='apartments')
     exact_address = models.CharField(max_length=255, blank=True, null=True)
     monthly_price = models.IntegerField(blank=True, null=True)
-    nearby_university = models.ForeignKey(University, on_delete=models.CASCADE, related_name='apartments')
-    distance_to_university = models.FloatField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
+    # nearby_university = models.ForeignKey(University, on_delete=models.CASCADE, related_name='apartments')
+    # distance_to_university = models.FloatField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
 
     # Xona ma'lumotlari
     ROOM_TYPE_CHOICES = (
         ('1 kishilik', '1 kishilik'),
         ('2 kishilik', '2 kishilik'),
         ('3 kishilik', '3 kishilik'),
+        ('Oilaviy', 'Oilaviy'),
     )
     GENDER_CHOICES = (
         ('Aralash', 'Aralash'),
         ('Erkak', 'Erkak'),
         ('Ayol', 'Ayol'),
     )
-    room_type = models.CharField(max_length=32, choices=ROOM_TYPE_CHOICES)
-    gender = models.CharField(max_length=16, choices=GENDER_CHOICES)
+    room_type = models.CharField(max_length=32, choices=ROOM_TYPE_CHOICES, default='Oilaviy')
+    gender = models.CharField(max_length=16, choices=GENDER_CHOICES, default='Erkak')
     total_rooms = models.PositiveIntegerField(default=1)
     available_rooms = models.PositiveIntegerField(default=1)
+    phone_number = models.CharField(blank=True, null=True, max_length=25)
 
     # Qulayliklar
     amenities = models.ManyToManyField(Amenity, related_name='apartments')
 
     # Qoidalar
-    rules_uz = models.JSONField(default=list, blank=True, null=True, help_text="O‘zbekcha qoidalar ro‘yxati")
-    rules_ru = models.JSONField(default=list, blank=True, null=True, help_text="Ruscha qoidalar ro‘yxati")
+    # rules_uz = models.JSONField(default=list, blank=True, null=True, help_text="O‘zbekcha qoidalar ro‘yxati")
+    # rules_ru = models.JSONField(default=list, blank=True, null=True, help_text="Ruscha qoidalar ro‘yxati")
 
     # Qo'shimcha
-    is_recommended = models.BooleanField(default=False, help_text="Tavsiya etilgan sifatida belgilash")
+    # is_recommended = models.BooleanField(default=False, help_text="Tavsiya etilgan sifatida belgilash")
     created_at = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='apartments')
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.title_uz
+        return self.title
 
 
 class ApartmentImage(models.Model):
@@ -345,4 +342,4 @@ class ApartmentImage(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.apartment.title_uz} - {self.id}"
+        return f"{self.apartment.title} - {self.id}"

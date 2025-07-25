@@ -232,7 +232,7 @@ class DormitoryImageSerializer(serializers.ModelSerializer):
 class AmenitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Amenity
-        fields = ['id', 'name', 'is_active', 'type']
+        fields = ['id', 'name', 'is_active']
 
 
 class RuleSafeSerializer(serializers.ModelSerializer):
@@ -273,34 +273,34 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
 
 
 class DormitorySerializer(serializers.ModelSerializer):
-    images = serializers.ListField(
-        child=serializers.ImageField(), write_only=True, required=False
-    )
+    # images = serializers.ListField(
+    #     child=serializers.ImageField(), write_only=True, required=False
+    # )
     distance_to_university = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Dormitory
         fields = [
             'id', 'name', 'university', 'address', 'description', 'admin',
-            'month_price', 'year_price', 'latitude', 'longitude', 'images', 'distance_to_university'
+            'month_price', 'year_price', 'latitude', 'longitude', 'distance_to_university'
         ]
 
-    def create(self, validated_data):
-        images = validated_data.pop('images', [])
-        dormitory = Dormitory.objects.create(**validated_data)
-        for image in images:
-            DormitoryImage.objects.create(dormitory=dormitory, image=image)
-        return dormitory
+    # def create(self, validated_data):
+    #     images = validated_data.pop('images', [])
+    #     dormitory = Dormitory.objects.create(**validated_data)
+    #     for image in images:
+    #         DormitoryImage.objects.create(dormitory=dormitory, image=image)
+    #     return dormitory
 
-    def update(self, instance, validated_data):
-        images = validated_data.pop('images', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        if images:
-            for image in images:
-                DormitoryImage.objects.create(dormitory=instance, image=image)
-        return instance
+    # def update(self, instance, validated_data):
+    #     images = validated_data.pop('images', None)
+    #     for attr, value in validated_data.items():
+    #         setattr(instance, attr, value)
+    #     instance.save()
+    #     if images:
+    #         for image in images:
+    #             DormitoryImage.objects.create(dormitory=instance, image=image)
+    #     return instance
 
 
 class RuleSerializer(serializers.ModelSerializer):
@@ -634,57 +634,72 @@ class ApartmentSafeSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField()
     images = ApartmentImageSerializer(read_only=True, many=True)
     amenities = AmenitySerializer(many=True, read_only=True)
-    rules_uz = serializers.JSONField(required=False)
-    rules_ru = serializers.JSONField(required=False)
 
     class Meta:
         model = Apartment
         fields = [
-            'id', 'title_uz', 'title_ru', 'description_uz', 'description_ru',
-            'province', 'exact_address', 'monthly_price', 'nearby_university',
-            'distance_to_university', 'room_type', 'gender', 'total_rooms',
-            'available_rooms', 'amenities', 'rules_uz', 'rules_ru', 'is_recommended',
-            'created_at', 'user', 'images'
+            'id', 'title', 'description',
+            'province', 'exact_address', 'monthly_price',
+            'room_type', 'gender', 'total_rooms',
+            'available_rooms', 'amenities',
+            'created_at', 'user', 'images', 'phone_number', 'is_active',
         ]
 
 class ApartmentSerializer(serializers.ModelSerializer):
-    images = serializers.ListField(
-        child=serializers.ImageField(), write_only=True, required=False
-    )
+    # images = serializers.ListField(
+    #     child=serializers.ImageField(), write_only=True, required=False
+    # )
 
     class Meta:
         model = Apartment
         fields = [
-            'id', 'title_uz', 'title_ru', 'description_uz', 'description_ru',
-            'province', 'exact_address', 'monthly_price', 'nearby_university',
-            'distance_to_university', 'room_type', 'gender', 'total_rooms',
-            'available_rooms', 'amenities', 'rules_uz', 'rules_ru', 'is_recommended',
-            'created_at', 'user', 'images'
+            'id', 'title', 'description',
+            'province', 'exact_address', 'monthly_price',
+            'room_type', 'gender', 'total_rooms',
+            'available_rooms', 'amenities', 'phone_number', 'is_active'
         ]
 
     def create(self, validated_data):
-        images = validated_data.pop('images', [])
-        apartment = Apartment.objects.create(**validated_data)
-        for image in images:
-            ApartmentImage.objects.create(apartment=apartment, image=image)
-        return apartment
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['user'] = request.user
+        else:
+            raise serializers.ValidationError("User authentication required")
+        return super().create(validated_data)
 
-    def update(self, instance, validated_data):
-        images = validated_data.pop('images', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        if images:
-            for image in images:
-                ApartmentImage.objects.create(apartment=instance, image=image)
-        return instance
+    # def update(self, instance, validated_data):
+    #     images = validated_data.pop('images', None)
+    #     for attr, value in validated_data.items():
+    #         setattr(instance, attr, value)
+    #     instance.save()
+    #     if images:
+    #         for image in images:
+    #             ApartmentImage.objects.create(apartment=instance, image=image)
+    #     return instance
 
 
-class AnswerForApplicationSerializer(serializers.ModelSerializer):
+class AnswerForApplicationSafeSerializer(serializers.ModelSerializer):
     application_name = serializers.CharField(source='application.name', read_only=True)
     user_username = serializers.CharField(source='user.username', read_only=True)
 
     class Meta:
         model = AnswerForApplication
         fields = ['id', 'application', 'application_name', 'user', 'user_username', 'comment', 'created_at']
-        read_only_fields = ['created_at']
+        read_only_fields = ['created_at', 'user', 'application']
+
+
+class AnswerForApplicationSerializer(serializers.ModelSerializer):
+    application = serializers.PrimaryKeyRelatedField(queryset=Application.objects.all(), write_only=True)
+
+    class Meta:
+        model = AnswerForApplication
+        fields = ['id', 'application', 'comment']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['user'] = request.user
+        else:
+            raise serializers.ValidationError("User authentication required")
+
+        return super().create(validated_data)

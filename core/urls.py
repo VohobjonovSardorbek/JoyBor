@@ -94,10 +94,10 @@ urlpatterns += [
     path('apartments/create/', ApartmentCreateAPIView.as_view(), name='apartment-create'),
     path('apartments/<int:pk>/update/', ApartmentUpdateAPIView.as_view(), name='apartment-update'),
 
-    path('amenities/', AmenityListAPIView.as_view(), name='amenity-list'),
-    path('amenities/create/', AmenityCreateAPIView.as_view(), name='amenity-create'),
-    path('amenities/<int:pk>/update/', AmenityUpdateAPIView.as_view(), name='amenity-update'),
-    path('amenities/<int:pk>/delete/', AmenityDeleteAPIView.as_view(), name='amenity-delete'),
+    # path('amenities/', AmenityListAPIView.as_view(), name='amenity-list'),
+    # path('amenities/create/', AmenityCreateAPIView.as_view(), name='amenity-create'),
+    # path('amenities/<int:pk>/update/', AmenityUpdateAPIView.as_view(), name='amenity-update'),
+    # path('amenities/<int:pk>/delete/', AmenityDeleteAPIView.as_view(), name='amenity-delete'),
 
     path('rules/', RuleListAPIView.as_view(), name='rule-list'),
     path('rules/create/', RuleCreateAPIView.as_view(), name='rule-create'),
