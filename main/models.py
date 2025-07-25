@@ -178,7 +178,7 @@ class Student(models.Model):
     course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs')  # yangi
     gender = models.CharField(max_length=120, choices=Gender_CHOICES, default='Erkak')
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students', blank=True, null=True)
-    phone = models.CharField(blank=True, null=True)
+    phone = models.CharField(blank=True, null=True, max_length=25)
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True)  # yangi
     privilege = models.BooleanField(default=False)
     accepted_date = models.DateTimeField(auto_now_add=True)
