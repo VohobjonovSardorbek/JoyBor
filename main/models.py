@@ -199,7 +199,7 @@ class Student(models.Model):
         if self.placement_status == 'Qabul qilindi':
             return 'Tekshirilmaydi'
 
-        last_payment = self.payment_set.order_by('-valid_until').first()
+        last_payment = self.payments.order_by('-valid_until').first()
         if not last_payment or last_payment.valid_until < timezone.now().date():
             return 'Qarzdor'
         return 'Haqdor'
