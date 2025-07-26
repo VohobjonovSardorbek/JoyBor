@@ -501,7 +501,7 @@ class ApplicationSafeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Application
-        fields = ['id', 'user', 'dormitory', 'status', 'comment', 'document',
+        fields = ['id', 'user', 'dormitory', 'status', 'comment', 'admin_comment', 'document',
             'name', 'fio', 'city', 'village', 'university', 'phone',
             'passport_image_first', 'passport_image_second', 'created_at', 'user_image', 'direction'
         ]
@@ -515,7 +515,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Application
-        fields = ['id', 'dormitory', 'status', 'comment', 'document',
+        fields = ['id', 'dormitory', 'status', 'comment', 'admin_comment', 'document',
             'name', 'fio', 'city', 'village', 'university', 'phone',
             'created_at', 'passport_image_first', 'passport_image_second', 'user_image', 'direction'
         ]
