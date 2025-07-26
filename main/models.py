@@ -163,6 +163,7 @@ class Student(models.Model):
     STATUS_CHOICES = (
         ('Qarzdor', 'Qarzdor'),
         ('Haqdor', 'Haqdor'),
+        ('Tekshirilmaydi', 'Tekshirilmaydi'),
     )
     name = models.CharField(max_length=120)
     last_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
@@ -195,15 +196,17 @@ class Student(models.Model):
     )
 
     def check_and_update_debt(self):
+        if self.placement_status == 'Qabul qilindi':
+            return 'Tekshirilmaydi'
+
         last_payment = self.payment_set.order_by('-valid_until').first()
         if not last_payment or last_payment.valid_until < timezone.now().date():
-            if self.status != 'qarzdor':
-                self.status = 'qarzdor'
-                self.save()
-        else:
-            if self.status != 'haqdor':
-                self.status = 'haqdor'
-                self.save()
+            return 'Qarzdor'
+        return 'Haqdor'
+
+    def save(self, *args, **kwargs):
+        self.status = self.check_and_update_debt()
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Student'
@@ -224,6 +227,7 @@ class Application(models.Model):
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     status = models.CharField(choices=STATUS_CHOICES, max_length=20, default='PENDING')
     comment = models.TextField(blank=True, null=True)
+    admin_comment = models.TextField(blank=True, null=True)
     document = models.FileField(blank=True, null=True)
     name = models.CharField(max_length=255)
     fio = models.CharField(blank=True, null=True, max_length=255)
@@ -245,14 +249,14 @@ class Application(models.Model):
         return self.name
 
 
-class AnswerForApplication(models.Model):
-    application = models.ForeignKey(Application, on_delete=models.CASCADE)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    comment = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.application.name
+# class AnswerForApplication(models.Model):
+#     application = models.ForeignKey(Application, on_delete=models.CASCADE)
+#     user = models.ForeignKey(User, on_delete=models.CASCADE)
+#     comment = models.TextField(blank=True, null=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#
+#     def __str__(self):
+#         return self.application.name
 
 
 class Payment(models.Model):

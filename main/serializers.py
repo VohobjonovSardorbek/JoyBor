@@ -678,28 +678,28 @@ class ApartmentSerializer(serializers.ModelSerializer):
     #     return instance
 
 
-class AnswerForApplicationSafeSerializer(serializers.ModelSerializer):
-    application_name = serializers.CharField(source='application.name', read_only=True)
-    user_username = serializers.CharField(source='user.username', read_only=True)
-
-    class Meta:
-        model = AnswerForApplication
-        fields = ['id', 'application', 'application_name', 'user', 'user_username', 'comment', 'created_at']
-        read_only_fields = ['created_at', 'user', 'application']
-
-
-class AnswerForApplicationSerializer(serializers.ModelSerializer):
-    application = serializers.PrimaryKeyRelatedField(queryset=Application.objects.all(), write_only=True)
-
-    class Meta:
-        model = AnswerForApplication
-        fields = ['id', 'application', 'comment']
-
-    def create(self, validated_data):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            validated_data['user'] = request.user
-        else:
-            raise serializers.ValidationError("User authentication required")
-
-        return super().create(validated_data)
+# class AnswerForApplicationSafeSerializer(serializers.ModelSerializer):
+#     application_name = serializers.CharField(source='application.name', read_only=True)
+#     user_username = serializers.CharField(source='user.username', read_only=True)
+#
+#     class Meta:
+#         model = AnswerForApplication
+#         fields = ['id', 'application', 'application_name', 'user', 'user_username', 'comment', 'created_at']
+#         read_only_fields = ['created_at', 'user', 'application']
+#
+#
+# class AnswerForApplicationSerializer(serializers.ModelSerializer):
+#     application = serializers.PrimaryKeyRelatedField(queryset=Application.objects.all(), write_only=True)
+#
+#     class Meta:
+#         model = AnswerForApplication
+#         fields = ['id', 'application', 'comment']
+#
+#     def create(self, validated_data):
+#         request = self.context.get('request')
+#         if request and request.user.is_authenticated:
+#             validated_data['user'] = request.user
+#         else:
+#             raise serializers.ValidationError("User authentication required")
+#
+#         return super().create(validated_data)

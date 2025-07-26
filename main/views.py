@@ -1103,63 +1103,63 @@ class RuleCreateAPIView(CreateAPIView):
 
 
 
-class AnswerForApplicationListApiview(ListAPIView):
-    serializer_class = AnswerForApplicationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return AnswerForApplication.objects.none()
-        user = self.request.user
-
-        return AnswerForApplication.objects.filter(
-            Q(user=user) | Q(application__user=user)
-        )
-
-
-class AnswerForApplicationDetailAPIView(RetrieveAPIView):
-    serializer_class = AnswerForApplicationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return AnswerForApplication.objects.none()
-        user = self.request.user
-
-        return AnswerForApplication.objects.filter(
-            Q(user=user) | Q(application__user=user)
-        )
+# class AnswerForApplicationListApiview(ListAPIView):
+#     serializer_class = AnswerForApplicationSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def get_queryset(self):
+#         if getattr(self, 'swagger_fake_view', False):
+#             return AnswerForApplication.objects.none()
+#         user = self.request.user
+#
+#         return AnswerForApplication.objects.filter(
+#             Q(user=user) | Q(application__user=user)
+#         )
 
 
-class AnswerForApplicationCreateAPIView(CreateAPIView):
-    serializer_class = AnswerForApplicationSerializer
-    permission_classes = [IsDormitoryAdmin]
-    queryset = AnswerForApplication.objects.all()
-
-
-class AnswerForApplicationUpdateAPIView(UpdateAPIView):
-    serializer_class = AnswerForApplicationSerializer
-    permission_classes = [IsDormitoryAdmin]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return  AnswerForApplication.objects.none()
-
-        user = self.request.user
-        return AnswerForApplication.objects.filter(user=user)
-
-
-class AnswerForApplicationDeleteAPIView(DestroyAPIView):
-    serializer_class = AnswerForApplicationSerializer
-    permission_classes = [IsDormitoryAdmin]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return AnswerForApplication.objects.none()
-
-        user = self.request.user
-        return AnswerForApplication.objects.filter(user=user)
-
+# class AnswerForApplicationDetailAPIView(RetrieveAPIView):
+#     serializer_class = AnswerForApplicationSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def get_queryset(self):
+#         if getattr(self, 'swagger_fake_view', False):
+#             return AnswerForApplication.objects.none()
+#         user = self.request.user
+#
+#         return AnswerForApplication.objects.filter(
+#             Q(user=user) | Q(application__user=user)
+#         )
+#
+#
+# class AnswerForApplicationCreateAPIView(CreateAPIView):
+#     serializer_class = AnswerForApplicationSerializer
+#     permission_classes = [IsDormitoryAdmin]
+#     queryset = AnswerForApplication.objects.all()
+#
+#
+# class AnswerForApplicationUpdateAPIView(UpdateAPIView):
+#     serializer_class = AnswerForApplicationSerializer
+#     permission_classes = [IsDormitoryAdmin]
+#
+#     def get_queryset(self):
+#         if getattr(self, 'swagger_fake_view', False):
+#             return  AnswerForApplication.objects.none()
+#
+#         user = self.request.user
+#         return AnswerForApplication.objects.filter(user=user)
+#
+#
+# class AnswerForApplicationDeleteAPIView(DestroyAPIView):
+#     serializer_class = AnswerForApplicationSerializer
+#     permission_classes = [IsDormitoryAdmin]
+#
+#     def get_queryset(self):
+#         if getattr(self, 'swagger_fake_view', False):
+#             return AnswerForApplication.objects.none()
+#
+#         user = self.request.user
+#         return AnswerForApplication.objects.filter(user=user)
+#
 
 
 
