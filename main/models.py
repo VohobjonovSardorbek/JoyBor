@@ -181,6 +181,8 @@ class Student(models.Model):
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students', blank=True, null=True)
     phone = models.CharField(blank=True, null=True, max_length=25)
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True)  # yangi
+    passport_image_first = models.ImageField(upload_to='passport_image/', blank=True, null=True)
+    passport_image_second = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     privilege = models.BooleanField(default=False)
     accepted_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=120, choices=STATUS_CHOICES, default='Qarzdor')
@@ -347,3 +349,22 @@ class ApartmentImage(models.Model):
 
     def __str__(self):
         return f"{self.apartment.title} - {self.id}"
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    message = models.CharField(max_length=255)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.message}"
+
+
+class NotificationAdmin(models.Model):
+    message = models.TextField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_notifications")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.message

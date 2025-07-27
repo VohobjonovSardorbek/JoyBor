@@ -235,7 +235,7 @@ class AmenitySerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'is_active']
 
 
-class RuleSafeSerializer(serializers.ModelSerializer):
+class RuleSafeForDormitorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Rule
         fields = ['id', 'rule']
@@ -249,7 +249,7 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
     available_capacity = serializers.SerializerMethodField()
     total_rooms = serializers.SerializerMethodField()
     amenities = AmenitySerializer(many=True, read_only=True)
-    rules = RuleSafeSerializer(many=True, read_only=True)
+    rules = RuleSafeForDormitorySerializer(many=True, read_only=True)
 
     class Meta:
         model = Dormitory
@@ -303,23 +303,18 @@ class DormitorySerializer(serializers.ModelSerializer):
     #     return instance
 
 
-class RuleSerializer(serializers.ModelSerializer):
+class RuleSafeSerializer(serializers.ModelSerializer):
+    dormitory = serializers.StringRelatedField()
+
     class Meta:
         model = Rule
-        fields = ['id', 'rule']
+        fields = ['id', 'dormitory', 'rule']
 
-    def create(self, validated_data):
-        request = self.context.get('request')
-        user = request.user
 
-        try:
-            dormitory = Dormitory.objects.get(admin=user)
-        except Dormitory.DoesNotExist:
-            raise serializers.ValidationError('Sizga yotoqxona biriktirilmagan')
-
-        validated_data['dormitory'] = dormitory
-
-        return super().create(validated_data)
+class RuleCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rule
+        fields = ['rule']
 
 
 class FloorSerializer(serializers.ModelSerializer):
@@ -417,7 +412,8 @@ class StudentSafeSerializer(serializers.ModelSerializer):
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'privilege',
-                  'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course', 'gender', 'placement_status']
+                  'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course',
+                  'gender', 'placement_status', 'passport_image_first', 'passport_image_second']
         read_only_fields = ['accepted_date']
 
     def get_picture(self, obj):
@@ -438,12 +434,14 @@ class StudentSerializer(serializers.ModelSerializer):
     floor = serializers.PrimaryKeyRelatedField(queryset=Floor.objects.all(), write_only=True, required=False)
     room = serializers.PrimaryKeyRelatedField(queryset=Room.objects.all(), write_only=True, required=False)
     picture = serializers.ImageField(required=False)
+    passport_image_first = serializers.ImageField(required=False)
+    passport_image_second = serializers.ImageField(required=False)
 
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
-                  'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date', 'passport', 'group',
-                  'course', 'gender']
+                  'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date',
+                  'passport', 'group','course', 'gender', 'passport_image_first', 'passport_image_second']
         read_only_fields = ['accepted_date']
         extra_kwargs = {
             'privilege': {'required': False},
@@ -703,3 +701,17 @@ class ApartmentSerializer(serializers.ModelSerializer):
 #             raise serializers.ValidationError("User authentication required")
 #
 #         return super().create(validated_data)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'is_read', 'created_at']
+
+
+class NotificationAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'created_by', 'created_at']
+        read_only_fields = ['created_by', 'created_at']
+

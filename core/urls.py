@@ -99,15 +99,15 @@ urlpatterns += [
     # path('amenities/<int:pk>/update/', AmenityUpdateAPIView.as_view(), name='amenity-update'),
     # path('amenities/<int:pk>/delete/', AmenityDeleteAPIView.as_view(), name='amenity-delete'),
 
-    path('rules/', RuleListAPIView.as_view(), name='rule-list'),
-    path('rules/create/', RuleCreateAPIView.as_view(), name='rule-create'),
-    # path('rules/<int:pk>/', RetrieveUpdateDestroyAPIView.as_view(), name='rule-detail'),
+    path('rules/', RuleListCreateAPIView.as_view(), name='rule-list-create'),
+    path('rules/<int:pk>/', RuleRetrieveUpdateDestroyAPIView.as_view(), name='rule-detail'),
+    path('amenities/', AmenityListAPIView.as_view(), name='amenities-list'),
 
-    # path('answers/', AnswerForApplicationListApiview.as_view(), name='answer-list'),
-    # path('answers/<int:pk>/', AnswerForApplicationDetailAPIView.as_view(), name='answer-detail'),
-    # path('answers/create/', AnswerForApplicationCreateAPIView.as_view(), name='answer-create'),
-    # path('answers/<int:pk>/update/', AnswerForApplicationUpdateAPIView.as_view(), name='answer-update'),
-    # path('answers/<int:pk>/delete/', AnswerForApplicationDeleteAPIView.as_view(), name='answer-delete'),
+    path('notifications/', NotificationListView.as_view(), name='notification-list'),
+    path('notification/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
+    path('notifications_by_admin', NotificationAdminListView.as_view(), name='notification-list'),
+    path('notifications_by_admin/create/', NotificationAdminCreateView.as_view(), name='notification-create'),
+    path('notifications_by_admin/<int:pk>/', NotificationAdminDetailView.as_view(), name='notification-detail'),
 ]
 
 

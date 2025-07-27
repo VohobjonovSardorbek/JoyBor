@@ -1073,93 +1073,113 @@ class ApartmentUpdateAPIView(UpdateAPIView):
 #     permission_classes = [IsAdminOrDormitoryAdmin]
 
 
-class RuleListAPIView(ListAPIView):
-    serializer_class = RuleSafeSerializer
-    permission_classes = [AllowAny]
-    queryset = Rule.objects.all()
-
-
-class RuleCreateAPIView(CreateAPIView):
-    serializer_class = RuleSerializer
+class RuleListCreateAPIView(ListCreateAPIView):
     permission_classes = [IsDormitoryAdmin]
-    queryset = Rule.objects.all()
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Rule.objects.none()
+
+        if not self.request.user.is_authenticated:
+            return Rule.objects.none()
+        return Rule.objects.filter(dormitory__admin=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return RuleCreateSerializer
+        return RuleSafeSerializer
+
+    def perform_create(self, serializer):
+        dormitory = Dormitory.objects.filter(admin=self.request.user).first()
+        if not dormitory:
+            raise PermissionDenied("Siz hech qanday yotoqxona admini emassiz.")
+        serializer.save(dormitory=dormitory)
 
 
-# class RuleUpdateAPIView(RetrieveUpdateDestroyAPIView):
-#     permission_classes = [IsDormitoryAdmin]
-#     serializer_class = RuleSerializer
-#     queryset = Rule.objects.all()
-#
-#     def get_queryset(self):
-#         if getattr(self, 'swagger_fake_view', False):
-#             return Rule.objects.none()
-#
-#         user = self.request.user
-#
-#         if Dormitory.objects.filter(admin=user).exists():
-#             dormitory = Dormitory.objects.get(admin=user)
-#             return Rule.objects.filter(dormitory=dormitory)
-#         return Rule.objects.none()
+class RuleRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsDormitoryAdmin]
+    serializer_class = RuleSafeSerializer  # default serializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Rule.objects.none()
+
+        if not self.request.user.is_authenticated:
+            return Rule.objects.none()
+        return Rule.objects.filter(dormitory__admin=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method in ['PUT', 'PATCH']:
+            return RuleCreateSerializer
+        return RuleSafeSerializer
 
 
-
-# class AnswerForApplicationListApiview(ListAPIView):
-#     serializer_class = AnswerForApplicationSerializer
-#     permission_classes = [IsAuthenticated]
-#
-#     def get_queryset(self):
-#         if getattr(self, 'swagger_fake_view', False):
-#             return AnswerForApplication.objects.none()
-#         user = self.request.user
-#
-#         return AnswerForApplication.objects.filter(
-#             Q(user=user) | Q(application__user=user)
-#         )
+class AmenityListAPIView(ListAPIView):
+    serializer_class = AmenitySerializer
+    permission_classes = [IsAuthenticated]
+    queryset = Amenity.objects.all()
 
 
-# class AnswerForApplicationDetailAPIView(RetrieveAPIView):
-#     serializer_class = AnswerForApplicationSerializer
-#     permission_classes = [IsAuthenticated]
-#
-#     def get_queryset(self):
-#         if getattr(self, 'swagger_fake_view', False):
-#             return AnswerForApplication.objects.none()
-#         user = self.request.user
-#
-#         return AnswerForApplication.objects.filter(
-#             Q(user=user) | Q(application__user=user)
-#         )
-#
-#
-# class AnswerForApplicationCreateAPIView(CreateAPIView):
-#     serializer_class = AnswerForApplicationSerializer
-#     permission_classes = [IsDormitoryAdmin]
-#     queryset = AnswerForApplication.objects.all()
-#
-#
-# class AnswerForApplicationUpdateAPIView(UpdateAPIView):
-#     serializer_class = AnswerForApplicationSerializer
-#     permission_classes = [IsDormitoryAdmin]
-#
-#     def get_queryset(self):
-#         if getattr(self, 'swagger_fake_view', False):
-#             return  AnswerForApplication.objects.none()
-#
-#         user = self.request.user
-#         return AnswerForApplication.objects.filter(user=user)
-#
-#
-# class AnswerForApplicationDeleteAPIView(DestroyAPIView):
-#     serializer_class = AnswerForApplicationSerializer
-#     permission_classes = [IsDormitoryAdmin]
-#
-#     def get_queryset(self):
-#         if getattr(self, 'swagger_fake_view', False):
-#             return AnswerForApplication.objects.none()
-#
-#         user = self.request.user
-#         return AnswerForApplication.objects.filter(user=user)
-#
+class NotificationListView(ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Rule.objects.none()
+
+        if not self.request.user.is_authenticated:
+            return Rule.objects.none()
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
 
 
+class NotificationMarkReadView(UpdateAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Rule.objects.none()
+
+        if not self.request.user.is_authenticated:
+            return Rule.objects.none()
+        return Notification.objects.filter(user=self.request.user)
+
+
+class NotificationAdminListView(ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Rule.objects.none()
+
+        if not self.request.user.is_authenticated:
+            return Rule.objects.none()
+
+        user = self.request.user
+        if user.role in ['isDormitoryAdmin', 'isSuperAdmin']:
+            return Notification.objects.all().order_by('-created_at')
+        return Notification.objects.none()
+
+
+class NotificationAdminCreateView(CreateAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role != 'isSuperAdmin':
+            raise PermissionDenied("Faqat superadminlar bildirishnoma yaratishi mumkin.")
+        serializer.save(created_by=user)
+
+
+class NotificationAdminDetailView(RetrieveUpdateDestroyAPIView):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        if request.method in ['PUT', 'PATCH', 'DELETE'] and request.user.role != 'isSuperAdmin':
+            raise PermissionDenied("Faqat superadminlar tahrirlashi yoki o‘chirish mumkin.")
