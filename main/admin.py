@@ -12,8 +12,12 @@ class UserAdmin(BaseUserAdmin):
     search_fields = ['username', 'email']
     list_filter = ['role', 'is_active']
 
-    fieldsets = BaseUserAdmin.fieldsets + (
-        (None, {'fields': ('role',)}),
+    fieldsets = (
+        (None, {'fields': ('username', 'password')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'email')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Important dates', {'fields': ('last_login', 'date_joined')}),
+        ('Custom', {'fields': ('role',)}),  # Bu qo‘shildi
     )
     add_fieldsets = (
         (None, {
