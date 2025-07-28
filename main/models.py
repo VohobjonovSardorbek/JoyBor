@@ -185,7 +185,7 @@ class Student(models.Model):
     passport_image_second = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     privilege = models.BooleanField(default=False)
     accepted_date = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=120, choices=STATUS_CHOICES, default='Qarzdor')
+    status = models.CharField(max_length=120, choices=STATUS_CHOICES, default='Tekshirilmaydi')
     PLACEMENT_STATUS_CHOICES = (
         ('Qabul qilindi', 'Qabul qilindi'),
         ('Joylashdi', 'Joylashdi'),
@@ -196,19 +196,6 @@ class Student(models.Model):
         choices=PLACEMENT_STATUS_CHOICES,
         default='Qabul qilindi'
     )
-
-    def check_and_update_debt(self):
-        if self.placement_status == 'Qabul qilindi':
-            return 'Tekshirilmaydi'
-
-        last_payment = self.payments.order_by('-valid_until').first()
-        if not last_payment or last_payment.valid_until < timezone.now().date():
-            return 'Qarzdor'
-        return 'Haqdor'
-
-    def save(self, *args, **kwargs):
-        self.status = self.check_and_update_debt()
-        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Student'

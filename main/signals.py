@@ -37,6 +37,24 @@ def create_notification(sender, instance, created, **kwargs):
             )
 
 
+@receiver(post_save, sender=Payment)
+def update_student_status_after_payment(sender, instance, created, **kwargs):
+    if created and instance.status == 'APPROVED':
+        student = instance.student
+
+        if student.placement_status == 'Qabul qilindi':
+            student.status = 'Tekshirilmaydi'
+        else:
+            last_payment = student.payments.order_by('-valid_until').first()
+            if not last_payment or not last_payment.valid_until or last_payment.valid_until < timezone.now().date():
+                student.status = 'Qarzdor'
+            else:
+                student.status = 'Haqdor'
+
+        student.save(update_fields=['status'])
+
+
+
 # @receiver(post_save, sender=Application)
 # def application_created(sender, instance, created, **kwargs):
 #     if created:

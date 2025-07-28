@@ -413,7 +413,7 @@ class StudentSafeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'privilege',
                   'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course',
-                  'gender', 'placement_status', 'passport_image_first', 'passport_image_second']
+                  'gender', 'placement_status', 'passport_image_first', 'passport_image_second', 'status']
         read_only_fields = ['accepted_date']
 
     def get_picture(self, obj):
