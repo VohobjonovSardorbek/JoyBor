@@ -1183,3 +1183,40 @@ class NotificationAdminDetailView(RetrieveUpdateDestroyAPIView):
         super().check_object_permissions(request, obj)
         if request.method in ['PUT', 'PATCH', 'DELETE'] and request.user.role != 'isSuperAdmin':
             raise PermissionDenied("Faqat superadminlar tahrirlashi yoki o‘chirish mumkin.")
+
+
+class ApartmentImageListCreateAPIView(ListCreateAPIView):
+    serializer_class = ApartmentImageSerializer
+    permission_classes = [IsIjarachiAdmin]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Rule.objects.none()
+
+        if not self.request.user.is_authenticated:
+            return Rule.objects.none()
+        return ApartmentImage.objects.filter(apartment__user=self.request.user)
+
+    def perform_create(self, serializer):
+        apartment = serializer.validated_data.get('apartment')
+
+        if apartment.user != self.request.user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Siz faqat o'zingizga tegishli apartment uchun rasm qo'shishingiz mumkin.")
+
+        serializer.save()
+
+
+class ApartmentImageDetailAPIView(RetrieveUpdateDestroyAPIView):
+    serializer_class = ApartmentImageSerializer
+    permission_classes = [IsIjarachiAdmin]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Rule.objects.none()
+
+        if not self.request.user.is_authenticated:
+            return Rule.objects.none()
+        return ApartmentImage.objects.filter(apartment__user=self.request.user)

@@ -105,9 +105,12 @@ urlpatterns += [
 
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notification/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
-    path('notifications_by_admin', NotificationAdminListView.as_view(), name='notification-list'),
-    path('notifications_by_admin/create/', NotificationAdminCreateView.as_view(), name='notification-create'),
-    path('notifications_by_admin/<int:pk>/', NotificationAdminDetailView.as_view(), name='notification-detail'),
+    path('notifications_by_superadmin', NotificationAdminListView.as_view(), name='notification-list'),
+    path('notifications_by_superadmin/create/', NotificationAdminCreateView.as_view(), name='notification-create'),
+    path('notifications_by_superadmin/<int:pk>/', NotificationAdminDetailView.as_view(), name='notification-detail'),
+
+    path('apartment_images/', ApartmentImageListCreateAPIView.as_view(), name='apartment-image-list-create'),
+    path('apartment_images/<int:pk>/', ApartmentImageDetailAPIView.as_view(), name='apartment-image-detail'),
 ]
 
 

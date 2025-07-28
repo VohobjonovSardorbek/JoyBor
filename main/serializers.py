@@ -622,15 +622,22 @@ class MonthlyRevenueSerializer(serializers.Serializer):
         ]
 
 
-class ApartmentImageSerializer(serializers.ModelSerializer):
+class ApartmentImageNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApartmentImage
         fields = ['id', 'image']
 
 
+class ApartmentImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApartmentImage
+        fields = ['id', 'apartment', 'image', 'uploaded_at']
+        read_only_fields = ['id', 'uploaded_at']
+
+
 class ApartmentSafeSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField()
-    images = ApartmentImageSerializer(read_only=True, many=True)
+    images = ApartmentImageNestedSerializer(read_only=True, many=True)
     amenities = AmenitySerializer(many=True, read_only=True)
 
     class Meta:
