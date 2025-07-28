@@ -40,6 +40,3 @@ class IsIjarachiAdmin(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and (request.user.role == 'ijarachi' or request.user.is_superuser)
 
-    def has_object_permission(self, request, view, obj):
-        # Only the owner of the apartment can update
-        return obj.user == request.user or request.user.is_superuser
