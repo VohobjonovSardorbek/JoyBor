@@ -96,7 +96,7 @@ urlpatterns += [
 
     # path('amenities/', AmenityListAPIView.as_view(), name='amenity-list'),
     # path('amenities/create/', AmenityCreateAPIView.as_view(), name='amenity-create'),
-    # path('amenities/<int:pk>/update/', AmenityUpdateAPIView.as_view(), name='amenity-update'),
+    path('amenities/<int:pk>/update/', AmenityUpdateAPIView.as_view(), name='amenity-update'),
     # path('amenities/<int:pk>/delete/', AmenityDeleteAPIView.as_view(), name='amenity-delete'),
 
     path('rules/', RuleListCreateAPIView.as_view(), name='rule-list-create'),

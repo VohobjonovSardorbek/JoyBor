@@ -1061,10 +1061,10 @@ class ApartmentUpdateAPIView(UpdateAPIView):
 #     permission_classes = [IsAdminOrDormitoryAdmin]
 
 
-# class AmenityUpdateAPIView(UpdateAPIView):
-#     queryset = Amenity.objects.all()
-#     serializer_class = AmenitySerializer
-#     permission_classes = [IsAdminOrDormitoryAdmin]
+class AmenityUpdateAPIView(UpdateAPIView):
+    queryset = Amenity.objects.all()
+    serializer_class = AmenitySerializer
+    permission_classes = [IsAdminOrDormitoryAdmin]
 
 
 # class AmenityDeleteAPIView(DestroyAPIView):
