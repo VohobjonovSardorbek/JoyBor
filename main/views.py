@@ -1126,10 +1126,10 @@ class NotificationListView(ListAPIView):
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
-            return Rule.objects.none()
+            return Notification.objects.none()
 
         if not self.request.user.is_authenticated:
-            return Rule.objects.none()
+            return Notification.objects.none()
         return Notification.objects.filter(user=self.request.user).order_by('-created_at')
 
 
@@ -1139,10 +1139,10 @@ class NotificationMarkReadView(UpdateAPIView):
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
-            return Rule.objects.none()
+            return Notification.objects.none()
 
         if not self.request.user.is_authenticated:
-            return Rule.objects.none()
+            return Notification.objects.none()
         return Notification.objects.filter(user=self.request.user)
 
 
@@ -1152,10 +1152,10 @@ class NotificationAdminListView(ListAPIView):
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
-            return Rule.objects.none()
+            return NotificationAdmin.objects.none()
 
         if not self.request.user.is_authenticated:
-            return Rule.objects.none()
+            return NotificationAdmin.objects.none()
 
         user = self.request.user
         if user.role in ['isDormitoryAdmin', 'isSuperAdmin']:
@@ -1185,6 +1185,19 @@ class NotificationAdminDetailView(RetrieveUpdateDestroyAPIView):
             raise PermissionDenied("Faqat superadminlar tahrirlashi yoki o‘chirish mumkin.")
 
 
+class MarkNotificationAsReadAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            notification = NotificationAdmin.objects.get(pk=pk, user=request.user)
+            notification.is_read = True
+            notification.save()
+            return Response({'detail': 'Notification marked as read.'})
+        except Notification.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
 class ApartmentImageListCreateAPIView(ListCreateAPIView):
     serializer_class = ApartmentImageSerializer
     permission_classes = [IsIjarachiAdmin]
@@ -1192,10 +1205,10 @@ class ApartmentImageListCreateAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
-            return Rule.objects.none()
+            return ApartmentImage.objects.none()
 
         if not self.request.user.is_authenticated:
-            return Rule.objects.none()
+            return ApartmentImage.objects.none()
         return ApartmentImage.objects.filter(apartment__user=self.request.user)
 
     def perform_create(self, serializer):
@@ -1215,8 +1228,8 @@ class ApartmentImageDetailAPIView(RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
-            return Rule.objects.none()
+            return ApartmentImage.objects.none()
 
         if not self.request.user.is_authenticated:
-            return Rule.objects.none()
+            return ApartmentImage.objects.none()
         return ApartmentImage.objects.filter(apartment__user=self.request.user)

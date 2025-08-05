@@ -105,7 +105,8 @@ urlpatterns += [
 
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notification/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
-    path('notifications_by_superadmin', NotificationAdminListView.as_view(), name='notification-list'),
+    path('notifications_by_superadmin/', NotificationAdminListView.as_view(), name='notification-list'),
+    path('notifications_by_superadmin/<int:pk>/read/', MarkNotificationAsReadAPIView.as_view(), name='notification-read'),
     path('notifications_by_superadmin/create/', NotificationAdminCreateView.as_view(), name='notification-create'),
     path('notifications_by_superadmin/<int:pk>/', NotificationAdminDetailView.as_view(), name='notification-detail'),
 
