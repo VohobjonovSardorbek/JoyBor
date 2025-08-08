@@ -409,7 +409,7 @@ class StudentSafeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'privilege',
                   'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course',
-                  'gender', 'placement_status', 'passport_image_first', 'passport_image_second', 'status']
+                  'gender', 'placement_status', 'passport_image_first', 'passport_image_second', 'status', 'privilege_share']
         read_only_fields = ['accepted_date']
 
     def get_picture(self, obj):
@@ -437,7 +437,7 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date',
-                  'passport', 'group','course', 'gender', 'passport_image_first', 'passport_image_second']
+                  'passport', 'group','course', 'gender', 'passport_image_first', 'passport_image_second', 'privilege_share']
         read_only_fields = ['accepted_date']
         extra_kwargs = {
             'privilege': {'required': False},
