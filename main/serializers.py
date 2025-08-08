@@ -444,10 +444,22 @@ class StudentSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
-        room = attrs.get('room')
+        passport = attrs.get('passport')
+        if passport:
+            passport = passport.upper()
+            import re
+            if not re.match(r'^[A-Z]{2}\d{7}$', passport):
+                raise serializers.ValidationError({
+                    'passport_number': "Pasport raqami noto‘g‘ri. Masalan: AA1234567 formatida bo‘lishi kerak."
+                })
+            attrs['passport'] = passport
 
+        room = attrs.get('room')
         if room and room.currentOccupancy >= room.capacity:
-            raise serializers.ValidationError("Bu xona to'lgan, unga talaba qo'sha olmaysiz")
+            raise serializers.ValidationError({
+                'room': "Bu xona to'lgan, unga talaba qo'sha olmaysiz."
+            })
+
         return attrs
 
     def create(self, validated_data):
