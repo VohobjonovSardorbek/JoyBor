@@ -273,10 +273,6 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
 
 
 class DormitorySerializer(serializers.ModelSerializer):
-    # images = serializers.ListField(
-    #     child=serializers.ImageField(), write_only=True, required=False
-    # )
-    distance_to_university = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Dormitory

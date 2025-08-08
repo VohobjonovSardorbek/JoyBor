@@ -184,6 +184,7 @@ class Student(models.Model):
     passport_image_first = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     passport_image_second = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     privilege = models.BooleanField(default=False)
+    privilege_share = models.PositiveIntegerField(default=0)
     accepted_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=120, choices=STATUS_CHOICES, default='Tekshirilmaydi')
     PLACEMENT_STATUS_CHOICES = (

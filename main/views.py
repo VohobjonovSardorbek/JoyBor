@@ -568,6 +568,7 @@ class StudentCreateAPIView(CreateAPIView):
 
 class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsDormitoryAdmin]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
