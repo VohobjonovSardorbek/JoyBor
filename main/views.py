@@ -8,7 +8,8 @@ from rest_framework.generics import *
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-
+from django.core.exceptions import MultipleObjectsReturned
+from django.http import Http404
 from .permissions import *
 from .serializers import *
 from .models import *
@@ -16,7 +17,7 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from django.db.models import Count, Sum, F, Case, When, Value, IntegerField, Q
+from django.db.models import Count, Sum, F, Case, When, Value, IntegerField, Q, Prefetch
 from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.parsers import MultiPartParser, FormParser
 from .filters import StudentFilter, ApplicationFilter, TaskFilter
@@ -24,6 +25,7 @@ from django.utils.dateparse import parse_date
 from django.utils.timesince import timesince
 from django.utils.timezone import localtime, now, is_naive, make_aware
 from django.utils import timezone
+from django.db import transaction
 from .serializers import UserProfileUpdateSerializer
 
 
@@ -460,6 +462,56 @@ class RoomDetailAPIView(RetrieveUpdateDestroyAPIView):
         return Room.objects.none()
 
 
+# Status constants
+STATUS_APPROVED = 'APPROVED'
+STATUS_QABUL = 'Qabul qilindi'
+STATUS_TEKSHIRMAYDI = 'Tekshirilmaydi'
+STATUS_QARZDOR = 'Qarzdor'
+STATUS_HAQDOR = 'Haqdor'
+
+
+def update_students_status_for_user(user):
+    today = timezone.now().date()
+
+    dormitory = Dormitory.objects.filter(admin=user).first()
+    if not dormitory:
+        return
+
+    approved_payments_qs = (
+        Payment.objects.filter(status=STATUS_APPROVED)
+        .order_by('-valid_until')
+    )
+
+    students = (
+        Student.objects.filter(dormitory=dormitory)
+        .prefetch_related(
+            Prefetch('payments', queryset=approved_payments_qs, to_attr='approved_payments')
+        )
+    )
+
+    for student in students:
+        if student.placement_status == STATUS_QABUL:
+            new_status = STATUS_TEKSHIRMAYDI
+        else:
+            last_payment = student.approved_payments[0] if student.approved_payments else None
+            if not last_payment or not last_payment.valid_until or last_payment.valid_until < today:
+                new_status = STATUS_QARZDOR
+            else:
+                new_status = STATUS_HAQDOR
+
+        if student.status != new_status:
+            student.status = new_status
+            student.save(update_fields=['status'])
+
+filter_params = [
+    openapi.Parameter('name', openapi.IN_QUERY, description="Talaba ismi bo'yicha qidiruv", type=openapi.TYPE_STRING),
+    openapi.Parameter('last_name', openapi.IN_QUERY, description="Talaba familiyasi bo'yicha qidiruv", type=openapi.TYPE_STRING),
+    openapi.Parameter('floor_id', openapi.IN_QUERY, description="Qavat bo'yicha filter", type=openapi.TYPE_INTEGER),
+    openapi.Parameter('status', openapi.IN_QUERY, description="Status bo'yicha filter", type=openapi.TYPE_STRING, enum=['Qarzdor', 'Haqdor', 'Tekshirilmaydi']),
+    openapi.Parameter('placement_status', openapi.IN_QUERY, description="Joylashish holati bo'yicha filter", type=openapi.TYPE_STRING, enum=['Qabul qilindi', 'Joylashdi']),
+    openapi.Parameter('max_payment', openapi.IN_QUERY, description="To'lov summasi (kamroq)", type=openapi.TYPE_INTEGER),
+]
+
 class StudentListAPIView(ListAPIView):
     serializer_class = StudentSafeSerializer
     permission_classes = [IsDormitoryAdmin]
@@ -467,16 +519,20 @@ class StudentListAPIView(ListAPIView):
     filterset_class = StudentFilter
     search_fields = ['name', 'last_name']
 
+    @swagger_auto_schema(manual_parameters=filter_params)
+    def get(self, request, *args, **kwargs):
+        return self.list(request, *args, **kwargs)
+
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Student.objects.none()
 
         user = self.request.user
 
-        if Dormitory.objects.filter(admin=user).exists():
-            dormitory = Dormitory.objects.get(admin=user)
-            return Student.objects.filter(dormitory=dormitory)
-        return Student.objects.none()
+        update_students_status_for_user(user)
+
+        dormitory = Dormitory.objects.filter(admin=user).first()
+        return Student.objects.filter(dormitory=dormitory) if dormitory else Student.objects.none()
 
 
 class ExportStudentExcelAPIView(APIView):
@@ -536,6 +592,23 @@ class ExportStudentExcelAPIView(APIView):
         return response
 
 
+# Room status constants (agar modelda constants bo'lsa, ulardan foydalaning)
+ROOM_STATUS_AVAILABLE = 'AVAILABLE'
+ROOM_STATUS_PARTIALLY = 'PARTIALLY_OCCUPIED'
+ROOM_STATUS_FULL = 'FULLY_OCCUPIED'
+
+PLACEMENT_STATUS_DONE = 'Joylashdi'
+
+
+def _get_dormitory_for_user_or_404(user):
+    try:
+        return Dormitory.objects.get(admin=user)
+    except Dormitory.DoesNotExist:
+        raise Http404("Dormitory not found for this user.")
+    except MultipleObjectsReturned:
+        return Dormitory.objects.filter(admin=user).first()
+
+
 class StudentCreateAPIView(CreateAPIView):
     serializer_class = StudentSerializer
     permission_classes = [IsDormitoryAdmin]
@@ -543,25 +616,27 @@ class StudentCreateAPIView(CreateAPIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def get_serializer(self, *args, **kwargs):
-
         if getattr(self, 'swagger_fake_view', False):
             return super().get_serializer(*args, **kwargs)
 
-        serializer_class = self.get_serializer_class()
-        kwargs['context'] = self.get_serializer_context()
-        serializer = serializer_class(*args, **kwargs)
+        serializer = super().get_serializer(*args, **kwargs)
 
-        dormitory = get_object_or_404(Dormitory, admin=self.request.user)
-        floors = Floor.objects.filter(dormitory=dormitory)
+        dormitory = _get_dormitory_for_user_or_404(self.request.user)
 
-        serializer.fields['floor'].queryset = Floor.objects.filter(dormitory=dormitory)
-        serializer.fields['room'].queryset = Room.objects.filter(floor__in=floors).exclude(status='FULLY_OCCUPIED')
+        floors_qs = Floor.objects.filter(dormitory=dormitory)
+        rooms_qs = Room.objects.filter(floor__in=floors_qs).exclude(status=ROOM_STATUS_FULL)
 
-        province = self.request.data.get('province')
-        if province:
-            serializer.fields['district'].queryset = District.objects.filter(province=province)
-        else:
-            serializer.fields['district'].queryset = District.objects.none()
+        if 'floor' in serializer.fields:
+            serializer.fields['floor'].queryset = floors_qs
+        if 'room' in serializer.fields:
+            serializer.fields['room'].queryset = rooms_qs
+
+        province = self.request.data.get('province') or self.request.query_params.get('province')
+        if 'district' in serializer.fields:
+            if province:
+                serializer.fields['district'].queryset = District.objects.filter(province_id=province)
+            else:
+                serializer.fields['district'].queryset = District.objects.none()
 
         return serializer
 
@@ -579,35 +654,45 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
         if getattr(self, 'swagger_fake_view', False):
             return Student.objects.none()
 
-        user = self.request.user
+        update_students_status_for_user(self.request.user)
 
-        if Dormitory.objects.filter(admin=user).exists():
-            dormitory = Dormitory.objects.get(admin=user)
-            return Student.objects.filter(dormitory=dormitory)
-        return Student.objects.none()
+        try:
+            dormitory = Dormitory.objects.get(admin=self.request.user)
+        except Dormitory.DoesNotExist:
+            return Student.objects.none()
+        except MultipleObjectsReturned:
+            dormitory = Dormitory.objects.filter(admin=self.request.user).first()
+            if not dormitory:
+                return Student.objects.none()
+
+        return Student.objects.filter(dormitory=dormitory).select_related('room', 'floor')
 
     def perform_destroy(self, instance):
         room = instance.room
-        super().perform_destroy(instance)
 
-        room.currentOccupancy = room.students.count()
+        with transaction.atomic():
+            super().perform_destroy(instance)
 
-        if room.currentOccupancy == 0:
-            room.status = 'AVAILABLE'
-        elif room.currentOccupancy < room.capacity:
-            room.status = 'PARTIALLY_OCCUPIED'
-        else:
-            room.status = 'FULLY_OCCUPIED'
+            new_occupancy = room.students.count()
+            room.currentOccupancy = new_occupancy
 
-        room.save()
+            if new_occupancy == 0:
+                room.status = ROOM_STATUS_AVAILABLE
+            elif new_occupancy < room.capacity:
+                room.status = ROOM_STATUS_PARTIALLY
+            else:
+                room.status = ROOM_STATUS_FULL
+
+            room.save(update_fields=['currentOccupancy', 'status'])
 
     def perform_update(self, serializer):
-        instance = serializer.save()
+        with transaction.atomic():
+            instance = serializer.save()
 
-        if instance.floor and instance.room:
-            if instance.placement_status != 'Joylashdi':
-                instance.placement_status = 'Joylashdi'
-                instance.save()
+            if getattr(instance, 'floor', None) and getattr(instance, 'room', None):
+                if instance.placement_status != PLACEMENT_STATUS_DONE:
+                    Student.objects.filter(pk=instance.pk).update(placement_status=PLACEMENT_STATUS_DONE)
+                    instance.placement_status = PLACEMENT_STATUS_DONE
 
 
 class ApplicationListAPIView(ListAPIView):

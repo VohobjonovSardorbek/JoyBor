@@ -6,20 +6,6 @@ from .models import Application, Payment, User, UserProfile, Notification
 from django.utils import timezone
 
 
-# from .serializers import ApplicationSerializer
-
-
-@receiver(post_save, sender=Payment)
-def update_student_status_on_payment(sender, instance, created, **kwargs):
-    if created:
-        student = instance.student
-        # Faqat shu studentga bog'langan paymentlarni tekshiramiz
-        last_payment = student.payments.order_by('-valid_until').first()
-        if last_payment and last_payment.valid_until >= timezone.now().date():
-            student.status = 'haqdor'
-            student.save()
-
-
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
@@ -39,21 +25,30 @@ def create_notification(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=Payment)
 def update_student_status_after_payment(sender, instance, created, **kwargs):
-    if created and instance.status == 'APPROVED':
-        student = instance.student
+    """
+    Yangi payment qo‘shilganda talaba statusini avtomatik yangilash.
+    """
+    if not created or instance.status != 'APPROVED':
+        return  # Faqat yangi va APPROVED to‘lovlar uchun ishlaydi
 
-        if student.placement_status == 'Qabul qilindi':
-            student.status = 'Tekshirilmaydi'
+    student = instance.student
+    today = timezone.now().date()
+
+    # 1. Joylashish jarayonida bo‘lsa
+    if student.placement_status == 'Qabul qilindi':
+        new_status = 'Tekshirilmaydi'
+    else:
+        # 2. Oxirgi APPROVED to‘lovni olish
+        last_payment = student.payments.filter(status='APPROVED').order_by('-valid_until').first()
+        if not last_payment or not last_payment.valid_until or last_payment.valid_until < today:
+            new_status = 'Qarzdor'
         else:
-            last_payment = student.payments.order_by('-valid_until').first()
-            if not last_payment or not last_payment.valid_until or last_payment.valid_until < timezone.now().date():
-                student.status = 'Qarzdor'
-            else:
-                student.status = 'Haqdor'
+            new_status = 'Haqdor'
 
+    # 3. Faqat status o‘zgarganda saqlash
+    if student.status != new_status:
+        student.status = new_status
         student.save(update_fields=['status'])
-
-
 
 # @receiver(post_save, sender=Application)
 # def application_created(sender, instance, created, **kwargs):
