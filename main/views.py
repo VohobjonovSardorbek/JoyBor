@@ -891,8 +891,8 @@ class AdminDashboardAPIView(APIView):
         # 3. Xonalar statistikasi (faqat shu yotoqxonaga tegishli)
         rooms_stats = Room.objects.filter(floor__dormitory=dormitory).aggregate(
             total_rooms=Count('id'),
-            male_rooms=Count('id', filter=Q(gender='Erkak')),
-            female_rooms=Count('id', filter=Q(gender='Ayol'))
+            male_rooms=Count('id', filter=Q(gender='male')),
+            female_rooms=Count('id', filter=Q(gender='female'))
         )
 
         # 4. To‘lovlar statistikasi
