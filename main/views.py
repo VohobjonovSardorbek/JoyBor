@@ -1012,7 +1012,7 @@ class RecentActivityAPIView(APIView):
                 "type": "payment_approved",
                 "title": "To‘lov tasdiqlandi",
                 "desc": f"{payment.student.name} - {payment.amount:,} so'm",
-                "time": timesince(localtime(paid_date), now()) + " before",
+                "time": timesince(localtime(paid_date), now()) + " ago",
                 "datetime": paid_date,
             })
 
@@ -1028,7 +1028,7 @@ class RecentActivityAPIView(APIView):
                 "type": "new_application",
                 "title": "Yangi ariza",
                 "desc": f"{application.name} - {application.comment or ''}",
-                "time": timesince(localtime(created_at), now()) + " oldin",
+                "time": timesince(localtime(created_at), now()) + " ago",
                 "datetime": created_at,
             })
 
@@ -1045,7 +1045,7 @@ class RecentActivityAPIView(APIView):
                 "type": "debt",
                 "title": "To‘lov kechikishi",
                 "desc": f"{debtor.name} - {debtor.course}",
-                "time": timesince(localtime(accepted_date), now()) + " oldin",
+                "time": timesince(localtime(accepted_date), now()) + " ago",
                 "datetime": accepted_date,
             })
 
@@ -1059,7 +1059,7 @@ class RecentActivityAPIView(APIView):
                 "type": "new_student",
                 "title": "Yangi talaba qo‘shildi",
                 "desc": f"{student.name} - {student.course}",
-                "time": timesince(localtime(accepted_date), now()) + " oldin",
+                "time": timesince(localtime(accepted_date), now()) + " ago",
                 "datetime": accepted_date,
             })
 
