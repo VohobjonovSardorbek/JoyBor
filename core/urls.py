@@ -106,7 +106,8 @@ urlpatterns += [
     path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notification/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
     path('notifications_by_superadmin/', NotificationAdminListView.as_view(), name='notification-list'),
-    path('notifications_by_superadmin/<int:pk>/read/', MarkNotificationAsReadAPIView.as_view(), name='notification-read'),
+    path('notifications_by_superadmin/<int:pk>/read/', MarkNotificationAsReadAPIView.as_view(),
+         name='notification-read'),
     path('notifications_by_superadmin/create/', NotificationAdminCreateView.as_view(), name='notification-create'),
     path('notifications_by_superadmin/<int:pk>/', NotificationAdminDetailView.as_view(), name='notification-detail'),
 
@@ -114,8 +115,7 @@ urlpatterns += [
     path('apartment_images/<int:pk>/', ApartmentImageDetailAPIView.as_view(), name='apartment-image-detail'),
 ]
 
-
 urlpatterns += [
-path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-path('token/refresh/', token_refresh),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+                   path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+                   path('token/refresh/', token_refresh),
+               ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

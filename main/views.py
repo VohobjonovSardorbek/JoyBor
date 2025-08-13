@@ -881,32 +881,18 @@ class AdminDashboardAPIView(APIView):
         if not dormitory:
             return Response({"detail": "Dormitory not found"}, status=404)
 
-        today = now().date()
-
         # 2. Talabalar statistikasi
         students_stats = Student.objects.filter(dormitory=dormitory).aggregate(
             total=Count('id'),
-            male=Count('id', filter=Q(room__gender='male')),
-            female=Count('id', filter=Q(room__gender='female')),
+            male=Count('id', filter=Q(gender='Erkak')),
+            female=Count('id', filter=Q(gender='Ayol')),
         )
 
-        # 3. Xonalar statistikasi
-        room_stats = Room.objects.filter(floor__dormitory=dormitory).aggregate(
-            total_available=Sum(F('capacity') - F('currentOccupancy')),
-            male_rooms=Sum(
-                Case(
-                    When(gender='male', then=F('capacity') - F('currentOccupancy')),
-                    default=Value(0),
-                    output_field=IntegerField()
-                )
-            ),
-            female_rooms=Sum(
-                Case(
-                    When(gender='female', then=F('capacity') - F('currentOccupancy')),
-                    default=Value(0),
-                    output_field=IntegerField()
-                )
-            )
+        # 3. Xonalar statistikasi (faqat shu yotoqxonaga tegishli)
+        rooms_stats = Room.objects.filter(dormitory=dormitory).aggregate(
+            total_rooms=Count('id'),
+            male_rooms=Count('id', filter=Q(gender='Erkak')),
+            female_rooms=Count('id', filter=Q(gender='Ayol'))
         )
 
         # 4. To‘lovlar statistikasi
@@ -915,8 +901,9 @@ class AdminDashboardAPIView(APIView):
             total_payment=Sum('amount')
         )
 
-        debtor_students = payments.filter(valid_until__lt=today).values('student').distinct().count()
-        non_debtor_students = payments.filter(valid_until__gte=today).values('student').distinct().count()
+        debtor_students = Student.objects.filter(dormitory=dormitory, status='Qarzdor').count()
+        non_debtor_students = Student.objects.filter(dormitory=dormitory, status='Haqdor').count()
+        unplaced_student = Student.objects.filter(dormitory=dormitory, status='Tekshirilmaydi').count()
 
         # 5. Arizalar statistikasi
         applications = Application.objects.filter(dormitory=dormitory)
@@ -931,13 +918,14 @@ class AdminDashboardAPIView(APIView):
         data = {
             "students": students_stats,
             "rooms": {
-                "total_available": room_stats['total_available'] or 0,
-                "male_rooms": room_stats['male_rooms'] or 0,
-                "female_rooms": room_stats['female_rooms'] or 0,
+                "total_rooms": rooms_stats['total_rooms'] or 0,
+                "male_rooms": rooms_stats['male_rooms'] or 0,
+                "female_rooms": rooms_stats['female_rooms'] or 0,
             },
             "payments": {
                 "debtor_students_count": debtor_students,
                 "non_debtor_students_count": non_debtor_students,
+                "unplaced_students_count": unplaced_student,
                 "total_payment": payment_stats['total_payment'] or 0,
             },
             "applications": application_stats,
@@ -1024,7 +1012,7 @@ class RecentActivityAPIView(APIView):
                 "type": "payment_approved",
                 "title": "To‘lov tasdiqlandi",
                 "desc": f"{payment.student.name} - {payment.amount:,} so'm",
-                "time": timesince(localtime(paid_date), now()) + " oldin",
+                "time": timesince(localtime(paid_date), now()) + " before",
                 "datetime": paid_date,
             })
 
