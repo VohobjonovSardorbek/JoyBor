@@ -17,8 +17,8 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from django.db.models import Count, Sum, F, Case, When, Value, IntegerField, Q, Prefetch
-from rest_framework.filters import SearchFilter, OrderingFilter
+from django.db.models import Count, Sum, Q, Prefetch
+from rest_framework.filters import SearchFilter
 from rest_framework.parsers import MultiPartParser, FormParser
 from .filters import StudentFilter, ApplicationFilter, TaskFilter
 from django.utils.dateparse import parse_date
@@ -362,21 +362,13 @@ class EveryAvailableRoomsAPIView(ListAPIView):
         if getattr(self, 'swagger_fake_view', False):
             return Room.objects.none()
 
-        user = self.request.user
-        dormitory = Dormitory.objects.filter(admin=user).first()
-
-        if not dormitory.exists():
-            return Room.objects.none()
-
+        dormitory = get_object_or_404(Dormitory, admin=self.request.user)
         floors = Floor.objects.filter(dormitory=dormitory)
         rooms = Room.objects.filter(floor__in=floors).exclude(status='FULLY_OCCUPIED')
 
         floor_id = self.request.query_params.get('floor')
-        if floor_id:
-            if floor_id.isdigit():
-                rooms = rooms.filter(floor_id=int(floor_id))
-            else:
-                return Room.objects.none()
+        if floor_id and floor_id.isdigit():
+            rooms = rooms.filter(floor_id=int(floor_id))
 
         return rooms
 
@@ -1000,7 +992,6 @@ class RecentActivityAPIView(APIView):
 
         activities = []
 
-        # 1. Oxirgi 15 ta tasdiqlangan to‘lov
         payments = Payment.objects.filter(
             dormitory=dormitory, status='APPROVED'
         ).order_by('-paid_date')[:15]
@@ -1016,7 +1007,6 @@ class RecentActivityAPIView(APIView):
                 "datetime": paid_date,
             })
 
-        # 2. Oxirgi 15 ta ariza
         applications = Application.objects.filter(
             dormitory=dormitory
         ).order_by('-created_at')[:15]
@@ -1032,7 +1022,6 @@ class RecentActivityAPIView(APIView):
                 "datetime": created_at,
             })
 
-        # 3. Oxirgi 15 ta qarzdor talaba
         debtors = Student.objects.filter(
             dormitory=dormitory,
             status='Qarzdor'
@@ -1049,7 +1038,6 @@ class RecentActivityAPIView(APIView):
                 "datetime": accepted_date,
             })
 
-        # 4. Oxirgi 15 ta yangi talaba
         students = Student.objects.filter(dormitory=dormitory).order_by('-accepted_date')[:15]
         for student in students:
             accepted_date = student.accepted_date
@@ -1063,10 +1051,8 @@ class RecentActivityAPIView(APIView):
                 "datetime": accepted_date,
             })
 
-        # Barchasini vaqt bo‘yicha tartiblaymiz va 15 tasini olamiz
         activities = sorted(activities, key=lambda x: x['datetime'], reverse=True)[:15]
 
-        # datetime ni chiqarib tashlaymiz
         for act in activities:
             act.pop('datetime', None)
 
@@ -1079,6 +1065,18 @@ class ApartmentListAPIView(ListAPIView):
     permission_classes = [AllowAny]
 
 
+class MyApartmentListAPIView(ListAPIView):
+    serializer_class = ApartmentSafeSerializer
+    permission_classes = [IsIjarachiAdmin]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.is_authenticated:
+            return Apartment.objects.filter(user=user)
+        return Apartment.objects.none()
+
+
 class ApartmentDetailAPIView(RetrieveAPIView):
     queryset = Apartment.objects.all()
     serializer_class = ApartmentSafeSerializer
@@ -1087,12 +1085,7 @@ class ApartmentDetailAPIView(RetrieveAPIView):
 
 class ApartmentCreateAPIView(CreateAPIView):
     serializer_class = ApartmentSerializer
-    permission_classes = [IsAuthenticated]
-    # parser_classes = [MultiPartParser, FormParser]
-    #
-    # @swagger_auto_schema(auto_schema=None)
-    # def post(self, request, *args, **kwargs):
-    #     return super().post(request, *args, **kwargs)
+    permission_classes = [IsIjarachiAdmin, IsAdmin]
 
 
 class ApartmentUpdateAPIView(UpdateAPIView):
@@ -1100,51 +1093,21 @@ class ApartmentUpdateAPIView(UpdateAPIView):
     serializer_class = ApartmentSerializer
     permission_classes = [IsIjarachiAdmin]
 
-    # parser_classes = [MultiPartParser, FormParser]
-    #
-    # @swagger_auto_schema(auto_schema=None)
-    # def put(self, request, *args, **kwargs):
-    #     return super().post(request, *args, **kwargs)
-    #
-    # @swagger_auto_schema(auto_schema=None)
-    # def patch(self, request, *args, **kwargs):
-    #     return super().post(request, *args, **kwargs)
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Application.objects.none()
         user = self.request.user
-        # Faqat o'ziga tegishli apartmentlar
         return Apartment.objects.filter(user=user)
 
     def perform_update(self, serializer):
         serializer.save(user=self.request.user)
 
 
-# class AmenityListAPIView(ListAPIView):
-#     queryset = Amenity.objects.all()
-#     serializer_class = AmenitySerializer
-#     permission_classes = [AllowAny]
-#     filter_backends = [DjangoFilterBackend]
-#     filterset_fields = ['type']
-
-
-# class AmenityCreateAPIView(CreateAPIView):
-#     queryset = Amenity.objects.all()
-#     serializer_class = AmenitySerializer
-#     permission_classes = [IsAdminOrDormitoryAdmin]
-
-
 class AmenityUpdateAPIView(UpdateAPIView):
     queryset = Amenity.objects.all()
     serializer_class = AmenitySerializer
     permission_classes = [IsAdminOrDormitoryAdmin]
-
-
-# class AmenityDeleteAPIView(DestroyAPIView):
-#     queryset = Amenity.objects.all()
-#     serializer_class = AmenitySerializer
-#     permission_classes = [IsAdminOrDormitoryAdmin]
 
 
 class RuleListCreateAPIView(ListCreateAPIView):

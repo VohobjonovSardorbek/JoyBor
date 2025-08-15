@@ -244,6 +244,7 @@ class RuleSafeForDormitorySerializer(serializers.ModelSerializer):
 class DormitorySafeSerializer(serializers.ModelSerializer):
     university = UniversitySerializer(read_only=True)
     admin = UserSerializer(read_only=True)
+    admin_phone_number = serializers.SerializerMethodField()
     images = DormitoryImageSafeSerializer(read_only=True, many=True)
     total_capacity = serializers.SerializerMethodField()
     available_capacity = serializers.SerializerMethodField()
@@ -255,8 +256,11 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
         model = Dormitory
         fields = ['id', 'university', 'admin', 'name', 'address',
                   'description', 'images', 'month_price', 'year_price',
-                  'latitude', 'longitude', 'amenities',
+                  'latitude', 'longitude', 'amenities', 'admin_phone_number',
                   'total_capacity', 'available_capacity', 'total_rooms', 'distance_to_university', 'rules']
+
+    def get_admin_phone_number(self, obj):
+        return getattr(obj.admin.profile, 'phone', None)
 
     def get_total_capacity(self, obj):
         return Room.objects.filter(floor__dormitory=obj).aggregate(total=Sum('capacity'))['total'] or 0
@@ -644,7 +648,8 @@ class ApartmentImageSerializer(serializers.ModelSerializer):
 
 
 class ApartmentSafeSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField()
+    user = UserSerializer(read_only=True)
+    user_phone_number = serializers.SerializerMethodField()
     images = ApartmentImageNestedSerializer(read_only=True, many=True)
     amenities = AmenitySerializer(many=True, read_only=True)
 
@@ -654,9 +659,13 @@ class ApartmentSafeSerializer(serializers.ModelSerializer):
             'id', 'title', 'description',
             'province', 'exact_address', 'monthly_price',
             'room_type', 'gender', 'total_rooms',
-            'available_rooms', 'amenities',
+            'available_rooms', 'amenities', 'user_phone_number',
             'created_at', 'user', 'images', 'phone_number', 'is_active',
         ]
+
+    def get_user_phone_number(self, obj):
+        return getattr(obj.user.profile, 'phone', None)
+
 
 class ApartmentSerializer(serializers.ModelSerializer):
     # images = serializers.ListField(

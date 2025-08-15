@@ -90,6 +90,7 @@ urlpatterns += [
     path('register/tenant/', TenantRegisterAPIView.as_view(), name='tenant-register'),
 
     path('apartments/', ApartmentListAPIView.as_view(), name='apartment-list'),
+    path('my_apartments/', MyApartmentListAPIView.as_view(), name='my-apartment-list'),
     path('apartments/<int:pk>/', ApartmentDetailAPIView.as_view(), name='apartment-detail'),
     path('apartments/create/', ApartmentCreateAPIView.as_view(), name='apartment-create'),
     path('apartments/<int:pk>/update/', ApartmentUpdateAPIView.as_view(), name='apartment-update'),
