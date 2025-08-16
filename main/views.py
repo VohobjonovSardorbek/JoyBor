@@ -27,6 +27,11 @@ from django.utils.timezone import localtime, now, is_naive, make_aware
 from django.utils import timezone
 from django.db import transaction
 from .serializers import UserProfileUpdateSerializer
+import random
+import string
+from django.core.mail import send_mail
+from django.conf import settings
+from datetime import timedelta
 
 
 class UserListAPIView(ListAPIView):
@@ -160,20 +165,11 @@ class MyDormitoryAPIView(RetrieveAPIView):
 
 class MyDormitoryUpdateAPIView(UpdateAPIView):
     permission_classes = [IsDormitoryAdmin]
-    serializer_class = DormitorySerializer
-
-    # parser_classes = [MultiPartParser, FormParser]
-    #
-    # @swagger_auto_schema(auto_schema=None)
-    # def put(self, request, *args, **kwargs):
-    #     return super().post(request, *args, **kwargs)
-    #
-    # @swagger_auto_schema(auto_schema=None)
-    # def patch(self, request, *args, **kwargs):
-    #     return super().post(request, *args, **kwargs)
+    serializer_class = MyDormitorySerializer
 
     def get_object(self):
         return get_object_or_404(Dormitory, admin=self.request.user)
+
 
 
 class DormitoryCreateAPIView(CreateAPIView):
@@ -1157,82 +1153,82 @@ class AmenityListAPIView(ListAPIView):
     queryset = Amenity.objects.all()
 
 
-class NotificationListView(ListAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Notification.objects.none()
-
-        if not self.request.user.is_authenticated:
-            return Notification.objects.none()
-        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
-
-
-class NotificationMarkReadView(UpdateAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return Notification.objects.none()
-
-        if not self.request.user.is_authenticated:
-            return Notification.objects.none()
-        return Notification.objects.filter(user=self.request.user)
-
-
-class NotificationAdminListView(ListAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if getattr(self, 'swagger_fake_view', False):
-            return NotificationAdmin.objects.none()
-
-        if not self.request.user.is_authenticated:
-            return NotificationAdmin.objects.none()
-
-        user = self.request.user
-        if user.role in ['isDormitoryAdmin', 'isSuperAdmin']:
-            return Notification.objects.all().order_by('-created_at')
-        return Notification.objects.none()
-
-
-class NotificationAdminCreateView(CreateAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        user = self.request.user
-        if user.role != 'isSuperAdmin':
-            raise PermissionDenied("Faqat superadminlar bildirishnoma yaratishi mumkin.")
-        serializer.save(created_by=user)
-
-
-class NotificationAdminDetailView(RetrieveUpdateDestroyAPIView):
-    queryset = Notification.objects.all()
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def check_object_permissions(self, request, obj):
-        super().check_object_permissions(request, obj)
-        if request.method in ['PUT', 'PATCH', 'DELETE'] and request.user.role != 'isSuperAdmin':
-            raise PermissionDenied("Faqat superadminlar tahrirlashi yoki o‘chirish mumkin.")
-
-
-class MarkNotificationAsReadAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, pk):
-        try:
-            notification = NotificationAdmin.objects.get(pk=pk, user=request.user)
-            notification.is_read = True
-            notification.save()
-            return Response({'detail': 'Notification marked as read.'})
-        except Notification.DoesNotExist:
-            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+# class NotificationListView(ListAPIView):
+#     serializer_class = NotificationSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def get_queryset(self):
+#         if getattr(self, 'swagger_fake_view', False):
+#             return Notification.objects.none()
+#
+#         if not self.request.user.is_authenticated:
+#             return Notification.objects.none()
+#         return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+#
+#
+# class NotificationMarkReadView(UpdateAPIView):
+#     serializer_class = NotificationSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def get_queryset(self):
+#         if getattr(self, 'swagger_fake_view', False):
+#             return Notification.objects.none()
+#
+#         if not self.request.user.is_authenticated:
+#             return Notification.objects.none()
+#         return Notification.objects.filter(user=self.request.user)
+#
+#
+# class NotificationAdminListView(ListAPIView):
+#     serializer_class = NotificationSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def get_queryset(self):
+#         if getattr(self, 'swagger_fake_view', False):
+#             return NotificationAdmin.objects.none()
+#
+#         if not self.request.user.is_authenticated:
+#             return NotificationAdmin.objects.none()
+#
+#         user = self.request.user
+#         if user.role in ['isDormitoryAdmin', 'isSuperAdmin']:
+#             return Notification.objects.all().order_by('-created_at')
+#         return Notification.objects.none()
+#
+#
+# class NotificationAdminCreateView(CreateAPIView):
+#     serializer_class = NotificationSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def perform_create(self, serializer):
+#         user = self.request.user
+#         if user.role != 'isSuperAdmin':
+#             raise PermissionDenied("Faqat superadminlar bildirishnoma yaratishi mumkin.")
+#         serializer.save(created_by=user)
+#
+#
+# class NotificationAdminDetailView(RetrieveUpdateDestroyAPIView):
+#     queryset = Notification.objects.all()
+#     serializer_class = NotificationSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def check_object_permissions(self, request, obj):
+#         super().check_object_permissions(request, obj)
+#         if request.method in ['PUT', 'PATCH', 'DELETE'] and request.user.role != 'isSuperAdmin':
+#             raise PermissionDenied("Faqat superadminlar tahrirlashi yoki o‘chirish mumkin.")
+#
+#
+# class MarkNotificationAsReadAPIView(APIView):
+#     permission_classes = [IsAuthenticated]
+#
+#     def post(self, request, pk):
+#         try:
+#             notification = NotificationAdmin.objects.get(pk=pk, user=request.user)
+#             notification.is_read = True
+#             notification.save()
+#             return Response({'detail': 'Notification marked as read.'})
+#         except Notification.DoesNotExist:
+#             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 class ApartmentImageListCreateAPIView(ListCreateAPIView):
@@ -1270,3 +1266,125 @@ class ApartmentImageDetailAPIView(RetrieveUpdateDestroyAPIView):
         if not self.request.user.is_authenticated:
             return ApartmentImage.objects.none()
         return ApartmentImage.objects.filter(apartment__user=self.request.user)
+
+
+# Notification Views
+class NotificationCreateView(CreateAPIView):
+    serializer_class = NotificationCreateSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    def perform_create(self, serializer):
+        notification = serializer.save(created_by=self.request.user)
+        
+        # Foydalanuvchilarni aniqlash va bildirishnoma yuborish
+        target_type = notification.target_type
+        
+        if target_type == 'all_students':
+            users = User.objects.filter(role='student')
+        elif target_type == 'all_admins':
+            users = User.objects.filter(role='admin')
+        elif target_type == 'specific_user':
+            users = [notification.target_user] if notification.target_user else []
+        else:
+            users = []
+        
+        # UserNotification yaratish
+        user_notifications = []
+        for user in users:
+            user_notifications.append(
+                UserNotification(user=user, notification=notification)
+            )
+        
+        UserNotification.objects.bulk_create(user_notifications, ignore_conflicts=True)
+        
+        return notification
+
+
+class NotificationListView(ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        if user.is_superuser or user.role == 'admin':
+            # Superadmin va adminlar barcha bildirishnomalarni ko'radi
+            return Notification.objects.filter(is_active=True)
+        else:
+            # Oddiy foydalanuvchilar faqat o'zlariga yuborilganlarni ko'radi
+            return Notification.objects.filter(
+                recipients__user=user,
+                is_active=True
+            )
+
+
+class UserNotificationListView(ListAPIView):
+    serializer_class = UserNotificationSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return UserNotification.objects.filter(
+            user=self.request.user,
+            notification__is_active=True
+        )
+
+
+class MarkNotificationReadView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        serializer = MarkNotificationReadSerializer(data=request.data)
+        if serializer.is_valid():
+            notification_id = serializer.validated_data['notification_id']
+            
+            try:
+                user_notification = UserNotification.objects.get(
+                    user=request.user,
+                    notification_id=notification_id
+                )
+                user_notification.is_read = True
+                user_notification.save()
+                
+                return Response({'detail': 'Bildirishnoma o\'qildi deb belgilandi'})
+            except UserNotification.DoesNotExist:
+                return Response(
+                    {'error': 'Bildirishnoma topilmadi'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class NotificationDetailView(RetrieveUpdateDestroyAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        
+        if user.is_superuser or user.role == 'admin':
+            return Notification.objects.all()
+        else:
+            return Notification.objects.filter(
+                recipients__user=user,
+                is_active=True
+            )
+    
+    def perform_destroy(self, instance):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Faqat superadmin bildirishnoma o'chira oladi")
+        instance.delete()
+
+
+class UnreadNotificationCountView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        count = UserNotification.objects.filter(
+            user=request.user,
+            is_read=False,
+            notification__is_active=True
+        ).count()
+        
+        return Response({'unread_count': count})

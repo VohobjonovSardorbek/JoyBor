@@ -256,7 +256,7 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
         model = Dormitory
         fields = ['id', 'university', 'admin', 'name', 'address',
                   'description', 'images', 'month_price', 'year_price',
-                  'latitude', 'longitude', 'amenities', 'admin_phone_number',
+                  'latitude', 'longitude', 'amenities', 'admin_phone_number', 'is_active',
                   'total_capacity', 'available_capacity', 'total_rooms', 'distance_to_university', 'rules']
 
     def get_admin_phone_number(self, obj):
@@ -281,26 +281,19 @@ class DormitorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Dormitory
         fields = [
-            'id', 'name', 'university', 'address', 'description', 'admin',
+            'name', 'university', 'address', 'description', 'admin', 'amenities', 'is_active',
             'month_price', 'year_price', 'latitude', 'longitude', 'distance_to_university'
         ]
 
-    # def create(self, validated_data):
-    #     images = validated_data.pop('images', [])
-    #     dormitory = Dormitory.objects.create(**validated_data)
-    #     for image in images:
-    #         DormitoryImage.objects.create(dormitory=dormitory, image=image)
-    #     return dormitory
 
-    # def update(self, instance, validated_data):
-    #     images = validated_data.pop('images', None)
-    #     for attr, value in validated_data.items():
-    #         setattr(instance, attr, value)
-    #     instance.save()
-    #     if images:
-    #         for image in images:
-    #             DormitoryImage.objects.create(dormitory=instance, image=image)
-    #     return instance
+class MyDormitorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Dormitory
+        fields = [
+            'name', 'university', 'address', 'description', 'amenities', 'is_active',
+            'month_price', 'year_price', 'latitude', 'longitude', 'distance_to_university'
+        ]
 
 
 class RuleSafeSerializer(serializers.ModelSerializer):
@@ -668,9 +661,6 @@ class ApartmentSafeSerializer(serializers.ModelSerializer):
 
 
 class ApartmentSerializer(serializers.ModelSerializer):
-    # images = serializers.ListField(
-    #     child=serializers.ImageField(), write_only=True, required=False
-    # )
 
     class Meta:
         model = Apartment
@@ -726,16 +716,65 @@ class ApartmentSerializer(serializers.ModelSerializer):
 #
 #         return super().create(validated_data)
 
-
-class NotificationSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Notification
-        fields = ['id', 'message', 'is_read', 'created_at']
-
-
 class NotificationAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ['id', 'message', 'created_by', 'created_at', 'is_read']
         read_only_fields = ['created_by', 'created_at']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    target_user_username = serializers.CharField(source='target_user.username', read_only=True)
+    image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'title', 'message', 'image', 'image_url', 'target_type', 
+            'target_user', 'target_user_username', 'created_by_username', 
+            'created_at', 'is_active'
+        ]
+        read_only_fields = ['created_by', 'created_at']
+    
+    def get_image_url(self, obj):
+        if obj.image and hasattr(obj.image, 'url'):
+            request = self.context.get('request')
+            if request is not None:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+
+
+class NotificationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = [
+            'title', 'message', 'image', 'target_type', 'target_user'
+        ]
+    
+    def validate(self, attrs):
+        target_type = attrs.get('target_type')
+        target_user = attrs.get('target_user')
+        
+        if target_type == 'specific_user' and not target_user:
+            raise serializers.ValidationError("Ma'lum foydalanuvchi tanlangan bo'lsa, foydalanuvchi ham ko'rsatilishi kerak")
+        
+        if target_type != 'specific_user' and target_user:
+            raise serializers.ValidationError("Faqat ma'lum foydalanuvchi tanlanganda foydalanuvchi ko'rsatilishi mumkin")
+        
+        return attrs
+
+
+class UserNotificationSerializer(serializers.ModelSerializer):
+    notification = NotificationSerializer(read_only=True)
+    
+    class Meta:
+        model = UserNotification
+        fields = ['id', 'notification', 'is_read', 'received_at']
+        read_only_fields = ['user', 'received_at']
+
+
+class MarkNotificationReadSerializer(serializers.Serializer):
+    notification_id = serializers.IntegerField()
 

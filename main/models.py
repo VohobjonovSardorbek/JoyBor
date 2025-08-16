@@ -27,7 +27,7 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     birth_date = models.DateField(blank=True, null=True)
-    # Qo‘shimcha maydonlar:
+    # Qo'shimcha maydonlar:
     address = models.CharField(max_length=255, blank=True, null=True)
     telegram = models.CharField(max_length=64, blank=True, null=True)
 
@@ -89,6 +89,7 @@ class Dormitory(models.Model):
     distance_to_university = models.FloatField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
 
     amenities = models.ManyToManyField(Amenity, related_name='dormitories')
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = 'Dormitory'
@@ -339,21 +340,53 @@ class ApartmentImage(models.Model):
         return f"{self.apartment.title} - {self.id}"
 
 
+# class Notification(models.Model):
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+#     message = models.CharField(max_length=255)
+#     is_read = models.BooleanField(default=False)
+#     created_at = models.DateTimeField(auto_now_add=True)
+#
+#     def __str__(self):
+#         return f"{self.user} - {self.message}"
+
+
 class Notification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
-    message = models.CharField(max_length=255)
-    is_read = models.BooleanField(default=False)
+    TARGET_CHOICES = (
+        ('all_students', 'Barcha studentlar'),
+        ('all_admins', 'Barcha adminlar'),
+        ('specific_user', 'Ma\'lum foydalanuvchi'),
+    )
+    
+    message = models.TextField(help_text="Bildirishnoma matni")
+    image = models.ImageField(upload_to='notifications/', blank=True, null=True, help_text="Bildirishnoma rasmi")
+    
+    target_type = models.CharField(max_length=20, choices=TARGET_CHOICES, default='all_students')
+    target_user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True, 
+                                   help_text="Agar specific_user tanlansa, bu foydalanuvchi")
+    
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
     created_at = models.DateTimeField(auto_now_add=True)
-
+    is_active = models.BooleanField(default=True, help_text="Bildirishnoma faolmi")
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Bildirishnoma'
+        verbose_name_plural = 'Bildirishnomalar'
+    
     def __str__(self):
-        return f"{self.user} - {self.message}"
+        return f"{self.title} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
 
 
-class NotificationAdmin(models.Model):
-    message = models.TextField()
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="created_notifications")
-    created_at = models.DateTimeField(auto_now_add=True)
+class UserNotification(models.Model):
+    """Foydalanuvchiga yuborilgan bildirishnomalar"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_notifications')
+    notification = models.ForeignKey(Notification, on_delete=models.CASCADE, related_name='recipients')
     is_read = models.BooleanField(default=False)
-
+    received_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-received_at']
+        unique_together = ['user', 'notification']
+    
     def __str__(self):
-        return self.message
+        return f"{self.user.username} - {self.notification.title}"
