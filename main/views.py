@@ -1271,7 +1271,7 @@ class ApartmentImageDetailAPIView(RetrieveUpdateDestroyAPIView):
 # Notification Views
 class NotificationCreateView(CreateAPIView):
     serializer_class = NotificationCreateSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]
     parser_classes = [MultiPartParser, FormParser]
     
     def perform_create(self, serializer):
@@ -1307,9 +1307,12 @@ class NotificationListView(ListAPIView):
     
     def get_queryset(self):
         user = self.request.user
+
+        if user.is_authenticated:
+            return Notification.objects.none()
         
-        if user.is_superuser or user.role == 'admin':
-            # Superadmin va adminlar barcha bildirishnomalarni ko'radi
+        if user.is_superuser:
+            # Superadmin barcha bildirishnomalarni ko'radi
             return Notification.objects.filter(is_active=True)
         else:
             # Oddiy foydalanuvchilar faqat o'zlariga yuborilganlarni ko'radi
@@ -1358,18 +1361,18 @@ class MarkNotificationReadView(APIView):
 
 class NotificationDetailView(RetrieveUpdateDestroyAPIView):
     serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdmin]
     
     def get_queryset(self):
         user = self.request.user
+
+        if user.is_authenticated:
+            return Notification.objects.none()
         
-        if user.is_superuser or user.role == 'admin':
+        if user.is_superuser:
             return Notification.objects.all()
         else:
-            return Notification.objects.filter(
-                recipients__user=user,
-                is_active=True
-            )
+            return Notification.objects.none()
     
     def perform_destroy(self, instance):
         if not self.request.user.is_superuser:

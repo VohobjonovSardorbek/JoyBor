@@ -731,7 +731,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = [
-            'id', 'title', 'message', 'image', 'image_url', 'target_type', 
+            'id', 'message', 'image', 'image_url', 'target_type',
             'target_user', 'target_user_username', 'created_by_username', 
             'created_at', 'is_active'
         ]
@@ -750,7 +750,7 @@ class NotificationCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = [
-            'title', 'message', 'image', 'target_type', 'target_user'
+            'message', 'image', 'target_type', 'target_user'
         ]
     
     def validate(self, attrs):
