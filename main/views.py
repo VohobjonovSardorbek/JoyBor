@@ -1335,6 +1335,30 @@ class UserNotificationListView(ListAPIView):
 
 class MarkNotificationReadView(APIView):
     permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        request_body=MarkNotificationReadSerializer,
+        responses={
+            200: openapi.Response(
+                description="Bildirishnoma muvaffaqiyatli o‘qilgan deb belgilandi",
+                examples={
+                    "application/json": {"detail": "Bildirishnoma o'qildi deb belgilandi"}
+                }
+            ),
+            404: openapi.Response(
+                description="Bildirishnoma topilmadi",
+                examples={
+                    "application/json": {"error": "Bildirishnoma topilmadi"}
+                }
+            ),
+            400: openapi.Response(
+                description="Notog‘ri ma’lumot yuborilgan",
+                examples={
+                    "application/json": {"notification_id": ["Ushbu maydon to‘ldirilishi shart."]}
+                }
+            ),
+        }
+    )
     
     def post(self, request):
         serializer = MarkNotificationReadSerializer(data=request.data)

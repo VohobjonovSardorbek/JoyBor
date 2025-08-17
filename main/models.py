@@ -360,7 +360,7 @@ class Notification(models.Model):
     message = models.TextField(help_text="Bildirishnoma matni")
     image = models.ImageField(upload_to='notifications/', blank=True, null=True, help_text="Bildirishnoma rasmi")
     
-    target_type = models.CharField(max_length=20, choices=TARGET_CHOICES, default='all_students')
+    target_type = models.CharField(max_length=20, choices=TARGET_CHOICES, default='specific_user')
     target_user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True, 
                                    help_text="Agar specific_user tanlansa, bu foydalanuvchi")
     
