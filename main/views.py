@@ -1288,7 +1288,7 @@ class NotificationCreateView(CreateAPIView):
             users = [notification.target_user] if notification.target_user else []
         else:
             users = []
-        
+
         # UserNotification yaratish
         user_notifications = []
         for user in users:
@@ -1308,7 +1308,7 @@ class NotificationListView(ListAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        if user.is_authenticated:
+        if not  user.is_authenticated:
             return Notification.objects.none()
         
         if user.is_superuser:
@@ -1390,7 +1390,7 @@ class NotificationDetailView(RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        if user.is_authenticated:
+        if not user.is_authenticated:
             return Notification.objects.none()
         
         if user.is_superuser:
