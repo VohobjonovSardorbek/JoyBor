@@ -724,7 +724,6 @@ class NotificationAdminSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
     target_user_username = serializers.CharField(source='target_user.username', read_only=True)
     image_url = serializers.SerializerMethodField()
     
@@ -732,7 +731,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = [
             'id', 'message', 'image', 'image_url', 'target_type',
-            'target_user', 'target_user_username', 'created_by_username', 
+            'target_user', 'target_user_username',
             'created_at', 'is_active'
         ]
         read_only_fields = ['created_by', 'created_at']

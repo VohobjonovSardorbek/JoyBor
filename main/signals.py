@@ -2,7 +2,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 # from channels.layers import get_channel_layer
 # from asgiref.sync import async_to_sync
-from .models import Application, Payment, User, UserProfile, Notification
+from .models import Application, Payment, User, UserProfile, Notification, UserNotification
 from django.utils import timezone
 
 
@@ -50,17 +50,21 @@ def update_student_status_after_payment(sender, instance, created, **kwargs):
         student.status = new_status
         student.save(update_fields=['status'])
 
-# @receiver(post_save, sender=Application)
-# def application_created(sender, instance, created, **kwargs):
-#     if created:
-#         channel_layer = get_channel_layer()
-#         data = ApplicationSerializer(instance).data
-#         admin_id = instance.dormitory.admin.id
-#         group_name = f"dormitory_admin_{admin_id}"
-#         async_to_sync(channel_layer.group_send)(
-#             group_name,
-#             {
-#                 "type": "send_application",
-#                 "application": data,
-#             }
-#         )
+@receiver(post_save, sender=Notification)
+def create_user_notifications(sender, instance, created, **kwargs):
+    if created:
+        target_type = instance.target_type
+
+        if target_type == 'all_students':
+            users = User.objects.filter(role='student')
+        elif target_type == 'all_admins':
+            users = User.objects.filter(role='admin')
+        elif target_type == 'specific_user':
+            users = [instance.target_user] if instance.target_user else []
+        else:
+            users = []
+
+        user_notifications = [
+            UserNotification(user=user, notification=instance) for user in users
+        ]
+        UserNotification.objects.bulk_create(user_notifications, ignore_conflicts=True)

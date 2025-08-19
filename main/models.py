@@ -362,7 +362,6 @@ class Notification(models.Model):
     target_user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True, 
                                    help_text="Agar specific_user tanlansa, bu foydalanuvchi")
     
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True, help_text="Bildirishnoma faolmi")
     

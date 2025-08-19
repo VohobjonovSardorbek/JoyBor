@@ -1275,8 +1275,8 @@ class NotificationCreateView(CreateAPIView):
     parser_classes = [MultiPartParser, FormParser]
     
     def perform_create(self, serializer):
-        notification = serializer.save(created_by=self.request.user)
-        
+        notification = serializer.save()
+
         # Foydalanuvchilarni aniqlash va bildirishnoma yuborish
         target_type = notification.target_type
         
