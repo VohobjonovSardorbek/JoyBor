@@ -102,14 +102,13 @@ urlpatterns += [
     path('apartments/create/', ApartmentCreateAPIView.as_view(), name='apartment-create'),
     path('apartments/<int:pk>/update/', ApartmentUpdateAPIView.as_view(), name='apartment-update'),
 
-    # path('amenities/', AmenityListAPIView.as_view(), name='amenity-list'),
-    # path('amenities/create/', AmenityCreateAPIView.as_view(), name='amenity-create'),
+    path('amenities/', AmenityListAPIView.as_view(), name='amenities-list'),
     path('amenities/<int:pk>/update/', AmenityUpdateAPIView.as_view(), name='amenity-update'),
-    # path('amenities/<int:pk>/delete/', AmenityDeleteAPIView.as_view(), name='amenity-delete'),
 
     path('rules/', RuleListCreateAPIView.as_view(), name='rule-list-create'),
     path('rules/<int:pk>/', RuleRetrieveUpdateDestroyAPIView.as_view(), name='rule-detail'),
-    path('amenities/', AmenityListAPIView.as_view(), name='amenities-list'),
+
+    path('statistics/', StatisticsAPIView.as_view(), name='statistics-list'),
 
     # path('notifications/', NotificationListView.as_view(), name='notification-list'),
     # path('notification/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),

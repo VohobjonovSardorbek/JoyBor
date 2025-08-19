@@ -1381,7 +1381,7 @@ class MarkNotificationReadView(APIView):
                 )
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+    
 
 class NotificationDetailView(RetrieveUpdateDestroyAPIView):
     serializer_class = NotificationSerializer
@@ -1415,3 +1415,14 @@ class UnreadNotificationCountView(APIView):
         ).count()
         
         return Response({'unread_count': count})
+
+class StatisticsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        data = {
+            'students_count' : Student.objects.count(),
+            'dormitories_count' : Dormitory.objects.count(),
+            'apartments_count' : Apartment.objects.count(),
+        }
+        return Response(data)

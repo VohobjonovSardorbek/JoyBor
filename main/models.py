@@ -293,8 +293,6 @@ class Apartment(models.Model):
     province = models.ForeignKey(Province, on_delete=models.CASCADE, related_name='apartments')
     exact_address = models.CharField(max_length=255, blank=True, null=True)
     monthly_price = models.IntegerField(blank=True, null=True)
-    # nearby_university = models.ForeignKey(University, on_delete=models.CASCADE, related_name='apartments')
-    # distance_to_university = models.FloatField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
 
     # Xona ma'lumotlari
     ROOM_TYPE_CHOICES = (
@@ -374,7 +372,7 @@ class Notification(models.Model):
         verbose_name_plural = 'Bildirishnomalar'
     
     def __str__(self):
-        return f"{self.title} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+        return f"{self.message} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
 
 
 class UserNotification(models.Model):
@@ -389,4 +387,4 @@ class UserNotification(models.Model):
         unique_together = ['user', 'notification']
     
     def __str__(self):
-        return f"{self.user.username} - {self.notification.title}"
+        return f"{self.user.username} - {self.notification.message}"
