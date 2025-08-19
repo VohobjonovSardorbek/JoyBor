@@ -734,7 +734,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             'target_user', 'target_user_username',
             'created_at', 'is_active'
         ]
-        read_only_fields = ['created_by', 'created_at']
+        read_only_fields = ['created_at']
     
     def get_image_url(self, obj):
         if obj.image and hasattr(obj.image, 'url'):
