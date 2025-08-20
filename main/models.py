@@ -174,7 +174,7 @@ class Student(models.Model):
     faculty = models.CharField(max_length=120, blank=True, null=True)
     direction = models.CharField(max_length=120, blank=True, null=True)  # yangi
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
-    floor = models.ForeignKey(Floor, on_delete=models.CASCADE,blank=True, null=True, related_name='students')  # yangi
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, blank=True, null=True, related_name='students')  # yangi
     passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
     group = models.CharField(max_length=120, blank=True, null=True)
     course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs')  # yangi
@@ -215,19 +215,23 @@ class Application(models.Model):
         ('CANCELLED', 'CANCELLED')
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    name = models.CharField(max_length=255)
+    last_name = models.CharField(max_length=255, blank=True, null=True)
+    middle_name = models.CharField(max_length=255, blank=True, null=True)
+    province = models.ForeignKey(Province, on_delete=models.CASCADE, default=1)
+    district = models.ForeignKey(District, on_delete=models.CASCADE, default=1)
+    faculty = models.CharField(max_length=255, blank=True, null=True)
+    direction = models.CharField(max_length=255, blank=True, null=True)
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
+    passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
+    group = models.CharField(max_length=120, blank=True, null=True)
     status = models.CharField(choices=STATUS_CHOICES, max_length=20, default='PENDING')
     comment = models.TextField(blank=True, null=True)
     admin_comment = models.TextField(blank=True, null=True)
     document = models.FileField(blank=True, null=True)
-    name = models.CharField(max_length=255)
-    fio = models.CharField(blank=True, null=True, max_length=255)
-    city = models.CharField(blank=True, null=True, max_length=255)
-    village = models.CharField(blank=True, null=True, max_length=255)
     university = models.CharField(blank=True, null=True, max_length=255)
     phone = models.IntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    direction = models.CharField(blank=True, null=True, max_length=255)
     user_image = models.ImageField(upload_to='student_pictures/', blank=True, null=True)
     passport_image_first = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     passport_image_second = models.ImageField(upload_to='passport_image/', blank=True, null=True)
@@ -238,16 +242,6 @@ class Application(models.Model):
 
     def __str__(self):
         return self.name
-
-
-# class AnswerForApplication(models.Model):
-#     application = models.ForeignKey(Application, on_delete=models.CASCADE)
-#     user = models.ForeignKey(User, on_delete=models.CASCADE)
-#     comment = models.TextField(blank=True, null=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#
-#     def __str__(self):
-#         return self.application.name
 
 
 class Payment(models.Model):
@@ -311,16 +305,7 @@ class Apartment(models.Model):
     total_rooms = models.PositiveIntegerField(default=1)
     available_rooms = models.PositiveIntegerField(default=1)
     phone_number = models.CharField(blank=True, null=True, max_length=25)
-
-    # Qulayliklar
     amenities = models.ManyToManyField(Amenity, related_name='apartments')
-
-    # Qoidalar
-    # rules_uz = models.JSONField(default=list, blank=True, null=True, help_text="O‘zbekcha qoidalar ro‘yxati")
-    # rules_ru = models.JSONField(default=list, blank=True, null=True, help_text="Ruscha qoidalar ro‘yxati")
-
-    # Qo'shimcha
-    # is_recommended = models.BooleanField(default=False, help_text="Tavsiya etilgan sifatida belgilash")
     created_at = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='apartments')
     is_active = models.BooleanField(default=True)
@@ -338,38 +323,28 @@ class ApartmentImage(models.Model):
         return f"{self.apartment.title} - {self.id}"
 
 
-# class Notification(models.Model):
-#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
-#     message = models.CharField(max_length=255)
-#     is_read = models.BooleanField(default=False)
-#     created_at = models.DateTimeField(auto_now_add=True)
-#
-#     def __str__(self):
-#         return f"{self.user} - {self.message}"
-
-
 class Notification(models.Model):
     TARGET_CHOICES = (
         ('all_students', 'Barcha studentlar'),
         ('all_admins', 'Barcha adminlar'),
         ('specific_user', 'Ma\'lum foydalanuvchi'),
     )
-    
+
     message = models.TextField(help_text="Bildirishnoma matni")
     image = models.ImageField(upload_to='notifications/', blank=True, null=True, help_text="Bildirishnoma rasmi")
-    
+
     target_type = models.CharField(max_length=20, choices=TARGET_CHOICES, default='specific_user')
-    target_user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True, 
-                                   help_text="Agar specific_user tanlansa, bu foydalanuvchi")
-    
+    target_user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,
+                                    help_text="Agar specific_user tanlansa, bu foydalanuvchi")
+
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True, help_text="Bildirishnoma faolmi")
-    
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'Bildirishnoma'
         verbose_name_plural = 'Bildirishnomalar'
-    
+
     def __str__(self):
         return f"{self.message} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
 
@@ -380,10 +355,24 @@ class UserNotification(models.Model):
     notification = models.ForeignKey(Notification, on_delete=models.CASCADE, related_name='recipients')
     is_read = models.BooleanField(default=False)
     received_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-received_at']
         unique_together = ['user', 'notification']
-    
+
     def __str__(self):
         return f"{self.user.username} - {self.notification.message}"
+
+
+class ApplicationNotification(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="application_notifications"
+    )
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.message[:30]}"

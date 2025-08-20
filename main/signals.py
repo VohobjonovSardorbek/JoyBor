@@ -2,7 +2,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 # from channels.layers import get_channel_layer
 # from asgiref.sync import async_to_sync
-from .models import Application, Payment, User, UserProfile, Notification, UserNotification
+from .models import Application, Payment, User, UserProfile, Notification, UserNotification, ApplicationNotification
 from django.utils import timezone
 
 
@@ -13,11 +13,11 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=Application)
-def create_notification(sender, instance, created, **kwargs):
+def create_application_notification(sender, instance, created, **kwargs):
     if created:
-        dormitory_admin = instance.dormitory.admin  # Dormitorydagi adminni olamiz
-        if dormitory_admin:  # Agar admin mavjud bo‘lsa
-            Notification.objects.create(
+        dormitory_admin = instance.dormitory.admin
+        if dormitory_admin:
+            ApplicationNotification.objects.create(
                 user=dormitory_admin,
                 message=f"Yangi ariza tushdi: {instance.name} sizning yotoqxonangiz uchun."
             )
@@ -49,6 +49,7 @@ def update_student_status_after_payment(sender, instance, created, **kwargs):
     if student.status != new_status:
         student.status = new_status
         student.save(update_fields=['status'])
+
 
 @receiver(post_save, sender=Notification)
 def create_user_notifications(sender, instance, created, **kwargs):

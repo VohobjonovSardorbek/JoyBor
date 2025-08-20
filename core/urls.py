@@ -110,6 +110,9 @@ urlpatterns += [
 
     path('statistics/', StatisticsAPIView.as_view(), name='statistics-list'),
 
+    path('application_notifications/', ApplicationNotificationListView.as_view(), name='application-notification-list'),
+    path('application_notification/<int:pk>/', ApplicationNotificationRetrieveAPIView.as_view(), name='application-notification-retrieve'),
+
     # path('notifications/', NotificationListView.as_view(), name='notification-list'),
     # path('notification/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
     # path('notifications_by_superadmin/', NotificationAdminListView.as_view(), name='notification-list'),
@@ -123,6 +126,6 @@ urlpatterns += [
 ]
 
 urlpatterns += [
-                   path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
-                   path('token/refresh/', token_refresh),
-               ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', token_refresh),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

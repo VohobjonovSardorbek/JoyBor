@@ -47,7 +47,8 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['username', 'first_name', 'last_name', 'email', 'password', 'image', 'bio', 'phone', 'birth_date', 'address', 'telegram']
+        fields = ['username', 'first_name', 'last_name', 'email', 'password', 'image', 'bio', 'phone', 'birth_date',
+                  'address', 'telegram']
 
     def validate_username(self, value):
         user = self.instance.user
@@ -75,7 +76,6 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
-
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -277,7 +277,6 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
 
 
 class DormitorySerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Dormitory
         fields = [
@@ -287,7 +286,6 @@ class DormitorySerializer(serializers.ModelSerializer):
 
 
 class MyDormitorySerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Dormitory
         fields = [
@@ -406,7 +404,8 @@ class StudentSafeSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'privilege',
                   'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course',
-                  'gender', 'placement_status', 'passport_image_first', 'passport_image_second', 'status', 'privilege_share']
+                  'gender', 'placement_status', 'passport_image_first', 'passport_image_second', 'status',
+                  'privilege_share']
         read_only_fields = ['accepted_date']
 
     def get_picture(self, obj):
@@ -434,7 +433,8 @@ class StudentSerializer(serializers.ModelSerializer):
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date',
-                  'passport', 'group','course', 'gender', 'passport_image_first', 'passport_image_second', 'privilege_share']
+                  'passport', 'group', 'course', 'gender', 'passport_image_first', 'passport_image_second',
+                  'privilege_share']
         read_only_fields = ['accepted_date']
         extra_kwargs = {
             'privilege': {'required': False},
@@ -501,13 +501,15 @@ class StudentSerializer(serializers.ModelSerializer):
 class ApplicationSafeSerializer(serializers.ModelSerializer):
     dormitory = DormitorySafeSerializer(read_only=True)
     user = UserSerializer(read_only=True)
+    province = ProvinceSerializer(read_only=True)
+    district = DistrictSerializer(read_only=True)
 
     class Meta:
         model = Application
-        fields = ['id', 'user', 'dormitory', 'status', 'comment', 'admin_comment', 'document',
-            'name', 'fio', 'city', 'village', 'university', 'phone',
-            'passport_image_first', 'passport_image_second', 'created_at', 'user_image', 'direction'
-        ]
+        fields = ['id', 'user', 'dormitory', 'status', 'comment', 'admin_comment', 'document', 'faculty', 'group',
+                  'name', 'last_name', 'middle_name', 'province', 'district', 'university', 'phone', 'passport',
+                  'passport_image_first', 'passport_image_second', 'created_at', 'user_image', 'direction'
+                  ]
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
@@ -515,13 +517,15 @@ class ApplicationSerializer(serializers.ModelSerializer):
     passport_image_first = serializers.ImageField(required=False)
     passport_image_second = serializers.ImageField(required=False)
     user_image = serializers.ImageField(required=False)
+    province = serializers.PrimaryKeyRelatedField(queryset=Province.objects.all(), write_only=True, required=False)
+    district = serializers.PrimaryKeyRelatedField(queryset=District.objects.all(), write_only=True, required=False)
 
     class Meta:
         model = Application
-        fields = ['id', 'dormitory', 'status', 'comment', 'admin_comment', 'document',
-            'name', 'fio', 'city', 'village', 'university', 'phone',
-            'created_at', 'passport_image_first', 'passport_image_second', 'user_image', 'direction'
-        ]
+        fields = ['id', 'dormitory', 'status', 'comment', 'admin_comment', 'document', 'faculty', 'passport',
+                  'name', 'last_name', 'middle_name', 'province', 'district', 'university', 'phone', 'group',
+                  'created_at', 'passport_image_first', 'passport_image_second', 'user_image', 'direction'
+                  ]
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -661,7 +665,6 @@ class ApartmentSafeSerializer(serializers.ModelSerializer):
 
 
 class ApartmentSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Apartment
         fields = [
@@ -679,54 +682,11 @@ class ApartmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("User authentication required")
         return super().create(validated_data)
 
-    # def update(self, instance, validated_data):
-    #     images = validated_data.pop('images', None)
-    #     for attr, value in validated_data.items():
-    #         setattr(instance, attr, value)
-    #     instance.save()
-    #     if images:
-    #         for image in images:
-    #             ApartmentImage.objects.create(apartment=instance, image=image)
-    #     return instance
-
-
-# class AnswerForApplicationSafeSerializer(serializers.ModelSerializer):
-#     application_name = serializers.CharField(source='application.name', read_only=True)
-#     user_username = serializers.CharField(source='user.username', read_only=True)
-#
-#     class Meta:
-#         model = AnswerForApplication
-#         fields = ['id', 'application', 'application_name', 'user', 'user_username', 'comment', 'created_at']
-#         read_only_fields = ['created_at', 'user', 'application']
-#
-#
-# class AnswerForApplicationSerializer(serializers.ModelSerializer):
-#     application = serializers.PrimaryKeyRelatedField(queryset=Application.objects.all(), write_only=True)
-#
-#     class Meta:
-#         model = AnswerForApplication
-#         fields = ['id', 'application', 'comment']
-#
-#     def create(self, validated_data):
-#         request = self.context.get('request')
-#         if request and request.user.is_authenticated:
-#             validated_data['user'] = request.user
-#         else:
-#             raise serializers.ValidationError("User authentication required")
-#
-#         return super().create(validated_data)
-
-class NotificationAdminSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Notification
-        fields = ['id', 'message', 'created_by', 'created_at', 'is_read']
-        read_only_fields = ['created_by', 'created_at']
-
 
 class NotificationSerializer(serializers.ModelSerializer):
     target_user_username = serializers.CharField(source='target_user.username', read_only=True)
     image_url = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Notification
         fields = [
@@ -735,7 +695,7 @@ class NotificationSerializer(serializers.ModelSerializer):
             'created_at', 'is_active'
         ]
         read_only_fields = ['created_at']
-    
+
     def get_image_url(self, obj):
         if obj.image and hasattr(obj.image, 'url'):
             request = self.context.get('request')
@@ -751,23 +711,25 @@ class NotificationCreateSerializer(serializers.ModelSerializer):
         fields = [
             'message', 'image', 'target_type', 'target_user'
         ]
-    
+
     def validate(self, attrs):
         target_type = attrs.get('target_type')
         target_user = attrs.get('target_user')
-        
+
         if target_type == 'specific_user' and not target_user:
-            raise serializers.ValidationError("Ma'lum foydalanuvchi tanlangan bo'lsa, foydalanuvchi ham ko'rsatilishi kerak")
-        
+            raise serializers.ValidationError(
+                "Ma'lum foydalanuvchi tanlangan bo'lsa, foydalanuvchi ham ko'rsatilishi kerak")
+
         if target_type != 'specific_user' and target_user:
-            raise serializers.ValidationError("Faqat ma'lum foydalanuvchi tanlanganda foydalanuvchi ko'rsatilishi mumkin")
-        
+            raise serializers.ValidationError(
+                "Faqat ma'lum foydalanuvchi tanlanganda foydalanuvchi ko'rsatilishi mumkin")
+
         return attrs
 
 
 class UserNotificationSerializer(serializers.ModelSerializer):
     notification = NotificationSerializer(read_only=True)
-    
+
     class Meta:
         model = UserNotification
         fields = ['id', 'notification', 'is_read', 'received_at']
@@ -776,4 +738,11 @@ class UserNotificationSerializer(serializers.ModelSerializer):
 
 class MarkNotificationReadSerializer(serializers.Serializer):
     notification_id = serializers.IntegerField()
+
+
+class ApplicationNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ApplicationNotification
+        fields = "__all__"
+        read_only_fields = ["user", "created_at"]
 

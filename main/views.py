@@ -171,7 +171,6 @@ class MyDormitoryUpdateAPIView(UpdateAPIView):
         return get_object_or_404(Dormitory, admin=self.request.user)
 
 
-
 class DormitoryCreateAPIView(CreateAPIView):
     queryset = Dormitory.objects.all()
     serializer_class = DormitorySerializer
@@ -491,14 +490,20 @@ def update_students_status_for_user(user):
             student.status = new_status
             student.save(update_fields=['status'])
 
+
 filter_params = [
     openapi.Parameter('name', openapi.IN_QUERY, description="Talaba ismi bo'yicha qidiruv", type=openapi.TYPE_STRING),
-    openapi.Parameter('last_name', openapi.IN_QUERY, description="Talaba familiyasi bo'yicha qidiruv", type=openapi.TYPE_STRING),
+    openapi.Parameter('last_name', openapi.IN_QUERY, description="Talaba familiyasi bo'yicha qidiruv",
+                      type=openapi.TYPE_STRING),
     openapi.Parameter('floor_id', openapi.IN_QUERY, description="Qavat bo'yicha filter", type=openapi.TYPE_INTEGER),
-    openapi.Parameter('status', openapi.IN_QUERY, description="Status bo'yicha filter", type=openapi.TYPE_STRING, enum=['Qarzdor', 'Haqdor', 'Tekshirilmaydi']),
-    openapi.Parameter('placement_status', openapi.IN_QUERY, description="Joylashish holati bo'yicha filter", type=openapi.TYPE_STRING, enum=['Qabul qilindi', 'Joylashdi']),
-    openapi.Parameter('max_payment', openapi.IN_QUERY, description="To'lov summasi (kamroq)", type=openapi.TYPE_INTEGER),
+    openapi.Parameter('status', openapi.IN_QUERY, description="Status bo'yicha filter", type=openapi.TYPE_STRING,
+                      enum=['Qarzdor', 'Haqdor', 'Tekshirilmaydi']),
+    openapi.Parameter('placement_status', openapi.IN_QUERY, description="Joylashish holati bo'yicha filter",
+                      type=openapi.TYPE_STRING, enum=['Qabul qilindi', 'Joylashdi']),
+    openapi.Parameter('max_payment', openapi.IN_QUERY, description="To'lov summasi (kamroq)",
+                      type=openapi.TYPE_INTEGER),
 ]
+
 
 class StudentListAPIView(ListAPIView):
     serializer_class = StudentSafeSerializer
@@ -529,32 +534,35 @@ class ExportStudentExcelAPIView(APIView):
     def get(self, request, *args, **kwargs):
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Students"
+        ws.title = "Talabalar"
 
+        # O'zbekcha ustun nomlari
         ws.append([
-            'ID',
-            'Name',
-            'Last Name',
-            'Middle Name',
-            'Province',
-            'District',
-            'Faculty',
-            'Direction',
-            'Group',
-            'Course',
-            'Gender',
-            'Phone',
-            'Passport',
-            'Privilege',
-            'Status',
-            'Accepted Date'
+            '№',
+            'Ism',
+            'Familiya',
+            'Otasining ismi',
+            'Viloyat',
+            'Tuman',
+            'Fakultet',
+            'Yo‘nalish',
+            'Guruh',
+            'Kurs',
+            'Jinsi',
+            'Telefon',
+            'Pasport',
+            'Imtiyoz',
+            'Holati',
+            'Qabul qilingan sana'
         ])
+
         dormitory = get_object_or_404(Dormitory, admin=request.user)
         students = Student.objects.select_related('province', 'district').filter(dormitory=dormitory)
 
-        for student in students:
+        # 1 dan boshlab tartib raqamini qo'shish
+        for index, student in enumerate(students, start=1):
             ws.append([
-                student.id,
+                index,  # student.id o‘rniga oddiy tartib raqami
                 student.name,
                 student.last_name or '',
                 student.middle_name or '',
@@ -567,7 +575,7 @@ class ExportStudentExcelAPIView(APIView):
                 student.gender or '',
                 student.phone or '',
                 student.passport or '',
-                'Ha' if student.privilege else 'Yo\'q',
+                'Ha' if student.privilege else 'Yo‘q',
                 student.status or '',
                 student.accepted_date.strftime('%Y-%m-%d') if student.accepted_date else ''
             ])
@@ -575,7 +583,7 @@ class ExportStudentExcelAPIView(APIView):
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        response['Content-Disposition'] = 'attachment; filename=students.xlsx'
+        response['Content-Disposition'] = 'attachment; filename=talabalar.xlsx'
         wb.save(response)
         return response
 
@@ -759,30 +767,33 @@ class ExportPaymentExcelAPIView(APIView):
 
         wb = openpyxl.Workbook()
         ws = wb.active
-        ws.title = "Payments"
+        ws.title = "To'lovlar"
 
+        # O'zbekcha ustun nomlari
         ws.append([
-            'ID',
-            'Student Name',
-            'Student Last Name',
-            'Student Course',
-            'Student Room',
-            'Amount',
-            'Paid Date',
-            'Valid Until',
-            'Method',
-            'Status',
-            'Comment'
+            '№',
+            'Talaba ismi',
+            'Familiya',
+            'Kurs',
+            'Xona',
+            'Miqdori',
+            'To‘langan sana',
+            'Amal qilish muddati',
+            'To‘lov usuli',
+            'Holati',
+            'Izoh'
         ])
 
         payments = Payment.objects.select_related('student', 'student__room').filter(dormitory=dormitory)
 
-        for payment in payments:
+        # 1 dan boshlab tartib raqamini qo'shish
+        for index, payment in enumerate(payments, start=1):
             ws.append([
-                payment.id,
+                index,  # payment.id o‘rniga oddiy tartib raqami
                 payment.student.name,
                 payment.student.last_name or '',
                 payment.student.course or '',
+                payment.student.room.name if payment.student.room else '',
                 payment.amount,
                 payment.paid_date.strftime('%Y-%m-%d %H:%M') if payment.paid_date else '',
                 payment.valid_until.strftime('%Y-%m-%d') if payment.valid_until else '',
@@ -794,7 +805,7 @@ class ExportPaymentExcelAPIView(APIView):
         response = HttpResponse(
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        response['Content-Disposition'] = 'attachment; filename=payments.xlsx'
+        response['Content-Disposition'] = 'attachment; filename=tolovlar.xlsx'
         wb.save(response)
         return response
 
@@ -1089,7 +1100,6 @@ class ApartmentUpdateAPIView(UpdateAPIView):
     serializer_class = ApartmentSerializer
     permission_classes = [IsIjarachiAdmin]
 
-
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
             return Application.objects.none()
@@ -1153,84 +1163,6 @@ class AmenityListAPIView(ListAPIView):
     queryset = Amenity.objects.all()
 
 
-# class NotificationListView(ListAPIView):
-#     serializer_class = NotificationSerializer
-#     permission_classes = [IsAuthenticated]
-#
-#     def get_queryset(self):
-#         if getattr(self, 'swagger_fake_view', False):
-#             return Notification.objects.none()
-#
-#         if not self.request.user.is_authenticated:
-#             return Notification.objects.none()
-#         return Notification.objects.filter(user=self.request.user).order_by('-created_at')
-#
-#
-# class NotificationMarkReadView(UpdateAPIView):
-#     serializer_class = NotificationSerializer
-#     permission_classes = [IsAuthenticated]
-#
-#     def get_queryset(self):
-#         if getattr(self, 'swagger_fake_view', False):
-#             return Notification.objects.none()
-#
-#         if not self.request.user.is_authenticated:
-#             return Notification.objects.none()
-#         return Notification.objects.filter(user=self.request.user)
-#
-#
-# class NotificationAdminListView(ListAPIView):
-#     serializer_class = NotificationSerializer
-#     permission_classes = [IsAuthenticated]
-#
-#     def get_queryset(self):
-#         if getattr(self, 'swagger_fake_view', False):
-#             return NotificationAdmin.objects.none()
-#
-#         if not self.request.user.is_authenticated:
-#             return NotificationAdmin.objects.none()
-#
-#         user = self.request.user
-#         if user.role in ['isDormitoryAdmin', 'isSuperAdmin']:
-#             return Notification.objects.all().order_by('-created_at')
-#         return Notification.objects.none()
-#
-#
-# class NotificationAdminCreateView(CreateAPIView):
-#     serializer_class = NotificationSerializer
-#     permission_classes = [IsAuthenticated]
-#
-#     def perform_create(self, serializer):
-#         user = self.request.user
-#         if user.role != 'isSuperAdmin':
-#             raise PermissionDenied("Faqat superadminlar bildirishnoma yaratishi mumkin.")
-#         serializer.save(created_by=user)
-#
-#
-# class NotificationAdminDetailView(RetrieveUpdateDestroyAPIView):
-#     queryset = Notification.objects.all()
-#     serializer_class = NotificationSerializer
-#     permission_classes = [IsAuthenticated]
-#
-#     def check_object_permissions(self, request, obj):
-#         super().check_object_permissions(request, obj)
-#         if request.method in ['PUT', 'PATCH', 'DELETE'] and request.user.role != 'isSuperAdmin':
-#             raise PermissionDenied("Faqat superadminlar tahrirlashi yoki o‘chirish mumkin.")
-#
-#
-# class MarkNotificationAsReadAPIView(APIView):
-#     permission_classes = [IsAuthenticated]
-#
-#     def post(self, request, pk):
-#         try:
-#             notification = NotificationAdmin.objects.get(pk=pk, user=request.user)
-#             notification.is_read = True
-#             notification.save()
-#             return Response({'detail': 'Notification marked as read.'})
-#         except Notification.DoesNotExist:
-#             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-
 class ApartmentImageListCreateAPIView(ListCreateAPIView):
     serializer_class = ApartmentImageSerializer
     permission_classes = [IsIjarachiAdmin]
@@ -1273,13 +1205,13 @@ class NotificationCreateView(CreateAPIView):
     serializer_class = NotificationCreateSerializer
     permission_classes = [IsAdmin]
     parser_classes = [MultiPartParser, FormParser]
-    
+
     def perform_create(self, serializer):
         notification = serializer.save()
 
         # Foydalanuvchilarni aniqlash va bildirishnoma yuborish
         target_type = notification.target_type
-        
+
         if target_type == 'all_students':
             users = User.objects.filter(role='student')
         elif target_type == 'all_admins':
@@ -1295,22 +1227,22 @@ class NotificationCreateView(CreateAPIView):
             user_notifications.append(
                 UserNotification(user=user, notification=notification)
             )
-        
+
         UserNotification.objects.bulk_create(user_notifications, ignore_conflicts=True)
-        
+
         return notification
 
 
 class NotificationListView(ListAPIView):
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
         user = self.request.user
 
-        if not  user.is_authenticated:
+        if not user.is_authenticated:
             return Notification.objects.none()
-        
+
         if user.is_superuser:
             # Superadmin barcha bildirishnomalarni ko'radi
             return Notification.objects.filter(is_active=True)
@@ -1325,7 +1257,7 @@ class NotificationListView(ListAPIView):
 class UserNotificationListView(ListAPIView):
     serializer_class = UserNotificationSerializer
     permission_classes = [IsAuthenticated]
-    
+
     def get_queryset(self):
         return UserNotification.objects.filter(
             user=self.request.user,
@@ -1359,12 +1291,11 @@ class MarkNotificationReadView(APIView):
             ),
         }
     )
-    
     def post(self, request):
         serializer = MarkNotificationReadSerializer(data=request.data)
         if serializer.is_valid():
             notification_id = serializer.validated_data['notification_id']
-            
+
             try:
                 user_notification = UserNotification.objects.get(
                     user=request.user,
@@ -1372,32 +1303,32 @@ class MarkNotificationReadView(APIView):
                 )
                 user_notification.is_read = True
                 user_notification.save()
-                
+
                 return Response({'detail': 'Bildirishnoma o\'qildi deb belgilandi'})
             except UserNotification.DoesNotExist:
                 return Response(
-                    {'error': 'Bildirishnoma topilmadi'}, 
+                    {'error': 'Bildirishnoma topilmadi'},
                     status=status.HTTP_404_NOT_FOUND
                 )
-        
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 
 class NotificationDetailView(RetrieveUpdateDestroyAPIView):
     serializer_class = NotificationSerializer
     permission_classes = [IsAdmin]
-    
+
     def get_queryset(self):
         user = self.request.user
 
         if not user.is_authenticated:
             return Notification.objects.none()
-        
+
         if user.is_superuser:
             return Notification.objects.all()
         else:
             return Notification.objects.none()
-    
+
     def perform_destroy(self, instance):
         if not self.request.user.is_superuser:
             raise PermissionDenied("Faqat superadmin bildirishnoma o'chira oladi")
@@ -1406,23 +1337,60 @@ class NotificationDetailView(RetrieveUpdateDestroyAPIView):
 
 class UnreadNotificationCountView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         count = UserNotification.objects.filter(
             user=request.user,
             is_read=False,
             notification__is_active=True
         ).count()
-        
+
         return Response({'unread_count': count})
+
 
 class StatisticsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         data = {
-            'students_count' : Student.objects.count(),
-            'dormitories_count' : Dormitory.objects.count(),
-            'apartments_count' : Apartment.objects.count(),
+            'students_count': Student.objects.count(),
+            'dormitories_count': Dormitory.objects.count(),
+            'apartments_count': Apartment.objects.count(),
         }
         return Response(data)
+
+
+class ApplicationNotificationListView(ListAPIView):
+    serializer_class = ApplicationNotificationSerializer
+    permission_classes = [IsAuthenticated]
+    def get_queryset(self):
+        user = self.request.user
+
+        if not user.is_authenticated:
+            return ApplicationNotification.objects.none()
+        return ApplicationNotification.objects.filter(user=user)
+
+
+class ApplicationNotificationRetrieveAPIView(RetrieveAPIView):
+    serializer_class = ApplicationNotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if not user.is_authenticated:
+            return ApplicationNotification.objects.none()
+        return ApplicationNotification.objects.filter(user=user)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if not instance.is_read:
+            instance.is_read = True
+            instance.save(update_fields=["is_read"])
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+
+
