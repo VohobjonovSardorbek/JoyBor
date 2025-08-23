@@ -69,9 +69,9 @@ admin.site.register(Student, StudentAdmin)
 
 
 class ApplicationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'university', 'dormitory', 'phone')
-    search_fields = ['name', 'university', 'dormitory']
-    list_filter = ['university', 'dormitory', 'status']
+    list_display = ('name', 'dormitory', 'phone')
+    search_fields = ['name', 'dormitory']
+    list_filter = ['dormitory', 'status']
 
 admin.site.register(Application, ApplicationAdmin)
 

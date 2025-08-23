@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -128,4 +128,9 @@ urlpatterns += [
 urlpatterns += [
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', token_refresh),
+    path('auth/', include('dj_rest_auth.urls')),  # login/logout/password
+    path('auth/google/', GoogleLoginAPIView.as_view(), name='google-login'),
+    path('auth/registration/', include('dj_rest_auth.registration.urls')),  # email-based reg
+    path('google/', include('allauth.socialaccount.urls')),  # google login
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

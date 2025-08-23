@@ -37,6 +37,12 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
+class UserShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username']
+
+
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', required=False)
     email = serializers.EmailField(source='user.email', required=False)
@@ -105,6 +111,10 @@ class StudentRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Bu email allaqachon mavjud.")
         if User.objects.filter(username=attrs['username']).exists():
             raise serializers.ValidationError("Bu username allaqachon mavjud.")
+        
+        # Password validatsiyasi
+        validate_password(attrs['password'])
+        
         return attrs
 
     def create(self, validated_data):
@@ -120,9 +130,11 @@ class StudentRegisterSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
 
-        if hasattr(user, 'profile'):
-            user.profile.phone = phone
-            user.profile.save()
+        # UserProfile yaratish
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        profile.phone = phone
+        profile.save()
+        
         return user
 
 
@@ -142,6 +154,10 @@ class TenantRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Bu email allaqachon mavjud.")
         if User.objects.filter(username=attrs['username']).exists():
             raise serializers.ValidationError("Bu username allaqachon mavjud.")
+        
+        # Password validatsiyasi
+        validate_password(attrs['password'])
+        
         return attrs
 
     def create(self, validated_data):
@@ -154,10 +170,32 @@ class TenantRegisterSerializer(serializers.ModelSerializer):
         )
         user.set_password(validated_data['password'])
         user.save()
-        if hasattr(user, 'profile'):
-            user.profile.phone = phone
-            user.profile.save()
+        
+        # UserProfile yaratish
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        profile.phone = phone
+        profile.save()
+        
         return user
+
+
+class GoogleLoginSerializer(serializers.Serializer):
+    token = serializers.CharField(
+        required=True, 
+        help_text="Google ID token from frontend",
+        max_length=5000,
+        trim_whitespace=True
+    )
+    
+    def validate_token(self, value):
+        if not value or len(value) < 100:
+            raise serializers.ValidationError("Invalid token format")
+        
+        # Token formatini tekshirish (JWT format)
+        if not value.count('.') == 2:
+            raise serializers.ValidationError("Invalid JWT token format")
+            
+        return value
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -194,6 +232,12 @@ class UniversitySerializer(serializers.ModelSerializer):
     class Meta:
         model = University
         fields = ['id', 'name', 'address', 'description', 'contact', 'logo']
+
+
+class UniversityShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = University
+        fields = ['id', 'name', 'logo']
 
 
 class DormitoryShortSerializer(serializers.ModelSerializer):
@@ -242,10 +286,10 @@ class RuleSafeForDormitorySerializer(serializers.ModelSerializer):
 
 
 class DormitorySafeSerializer(serializers.ModelSerializer):
-    university = UniversitySerializer(read_only=True)
-    admin = UserSerializer(read_only=True)
+    university = UniversityShortSerializer(read_only=True)
+    admin = UserShortSerializer(read_only=True)
     admin_phone_number = serializers.SerializerMethodField()
-    images = DormitoryImageSafeSerializer(read_only=True, many=True)
+    images = DormitoryImageSerializer(read_only=True, many=True)
     total_capacity = serializers.SerializerMethodField()
     available_capacity = serializers.SerializerMethodField()
     total_rooms = serializers.SerializerMethodField()
@@ -257,7 +301,8 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
         fields = ['id', 'university', 'admin', 'name', 'address',
                   'description', 'images', 'month_price', 'year_price',
                   'latitude', 'longitude', 'amenities', 'admin_phone_number', 'is_active',
-                  'total_capacity', 'available_capacity', 'total_rooms', 'distance_to_university', 'rules']
+                  'total_capacity', 'available_capacity', 'total_rooms', 'distance_to_university', 'rules'
+        ]
 
     def get_admin_phone_number(self, obj):
         return getattr(obj.admin.profile, 'phone', None)
@@ -327,6 +372,12 @@ class FloorSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class FloorShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Floor
+        fields = ['id', 'name']
+
+
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
@@ -371,29 +422,23 @@ class RoomSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class PaymentShortSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Payment
-        fields = ['id', 'amount', 'method', 'paid_date', 'valid_until', 'comment']
-
-
-class FloorShortSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Floor
-        fields = ['id', 'name']
-
-
 class RoomShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = ['id', 'name']
 
 
+class PaymentShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'amount', 'method', 'paid_date', 'valid_until', 'comment']
+
+
 class StudentSafeSerializer(serializers.ModelSerializer):
     province = ProvinceSerializer(read_only=True)
     district = DistrictSerializer(read_only=True)
     dormitory = DormitoryShortSerializer(read_only=True)
-    floor = DormitoryShortSerializer(read_only=True)
+    floor = FloorShortSerializer(read_only=True)
     room = RoomShortSerializer(read_only=True)
     payments = PaymentShortSerializer(read_only=True, many=True)
     total_payment = SerializerMethodField()
@@ -499,16 +544,17 @@ class StudentSerializer(serializers.ModelSerializer):
 
 
 class ApplicationSafeSerializer(serializers.ModelSerializer):
-    dormitory = DormitorySafeSerializer(read_only=True)
-    user = UserSerializer(read_only=True)
+    dormitory = DormitoryShortSerializer(read_only=True)
+    user = UserShortSerializer(read_only=True)
     province = ProvinceSerializer(read_only=True)
     district = DistrictSerializer(read_only=True)
 
     class Meta:
         model = Application
-        fields = ['id', 'user', 'dormitory', 'status', 'comment', 'admin_comment', 'document', 'faculty', 'group',
-                  'name', 'last_name', 'middle_name', 'province', 'district', 'university', 'phone', 'passport',
-                  'passport_image_first', 'passport_image_second', 'created_at', 'user_image', 'direction'
+        fields = ['id', 'user', 'dormitory', 'name', 'last_name', 'middle_name', 'province',
+                  'district', 'faculty', 'direction', 'course', 'group', 'phone', 'passport',
+                  'status', 'comment', 'admin_comment', 'document', 'user_image',
+                  'passport_image_first', 'passport_image_second', 'created_at',
                   ]
 
 
@@ -522,9 +568,10 @@ class ApplicationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Application
-        fields = ['id', 'dormitory', 'status', 'comment', 'admin_comment', 'document', 'faculty', 'passport',
-                  'name', 'last_name', 'middle_name', 'province', 'district', 'university', 'phone', 'group',
-                  'created_at', 'passport_image_first', 'passport_image_second', 'user_image', 'direction'
+        fields = ['id', 'dormitory', 'name', 'last_name', 'middle_name', 'province',
+                  'district', 'faculty', 'direction', 'course', 'group', 'phone',
+                  'passport', 'comment', 'admin_comment', 'document', 'user_image',
+                  'passport_image_first', 'passport_image_second',
                   ]
 
     def create(self, validated_data):
@@ -596,7 +643,7 @@ class ApplicationsStatsSerializer(serializers.Serializer):
 class RecentApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
-        fields = ['name', 'city', 'status', 'created_at']
+        fields = ['name', 'status', 'created_at']
 
 
 class DashboardSerializer(serializers.Serializer):
@@ -631,7 +678,7 @@ class MonthlyRevenueSerializer(serializers.Serializer):
         ]
 
 
-class ApartmentImageNestedSerializer(serializers.ModelSerializer):
+class ApartmentImageSafeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApartmentImage
         fields = ['id', 'image']
@@ -645,17 +692,16 @@ class ApartmentImageSerializer(serializers.ModelSerializer):
 
 
 class ApartmentSafeSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = UserShortSerializer(read_only=True)
     user_phone_number = serializers.SerializerMethodField()
-    images = ApartmentImageNestedSerializer(read_only=True, many=True)
+    images = ApartmentImageSafeSerializer(read_only=True, many=True)
     amenities = AmenitySerializer(many=True, read_only=True)
 
     class Meta:
         model = Apartment
         fields = [
-            'id', 'title', 'description',
-            'province', 'exact_address', 'monthly_price',
-            'room_type', 'gender', 'total_rooms',
+            'id', 'title', 'description', 'province', 'exact_address',
+            'monthly_price', 'room_type', 'gender', 'total_rooms',
             'available_rooms', 'amenities', 'user_phone_number',
             'created_at', 'user', 'images', 'phone_number', 'is_active',
         ]
@@ -668,10 +714,10 @@ class ApartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Apartment
         fields = [
-            'id', 'title', 'description',
-            'province', 'exact_address', 'monthly_price',
-            'room_type', 'gender', 'total_rooms',
-            'available_rooms', 'amenities', 'phone_number', 'is_active'
+            'id', 'title', 'description', 'province',
+            'exact_address', 'monthly_price', 'room_type',
+            'gender', 'total_rooms', 'available_rooms',
+            'amenities', 'phone_number', 'is_active'
         ]
 
     def create(self, validated_data):
@@ -745,4 +791,3 @@ class ApplicationNotificationSerializer(serializers.ModelSerializer):
         model = ApplicationNotification
         fields = "__all__"
         read_only_fields = ["user", "created_at"]
-

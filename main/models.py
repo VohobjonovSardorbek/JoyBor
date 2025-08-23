@@ -1,14 +1,13 @@
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
-from django.utils import timezone
 
 
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('student', 'student'),
         ('admin', 'admin'),
-        ('ijarachi', 'ijarachi'),  # yangi
+        ('ijarachi', 'ijarachi'),
     )
     role = models.CharField(choices=ROLE_CHOICES, max_length=20)
     email = models.EmailField(blank=True, null=True, unique=True)
@@ -27,7 +26,6 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     birth_date = models.DateField(blank=True, null=True)
-    # Qo'shimcha maydonlar:
     address = models.CharField(max_length=255, blank=True, null=True)
     telegram = models.CharField(max_length=64, blank=True, null=True)
 
@@ -79,15 +77,14 @@ class Dormitory(models.Model):
     university = models.ForeignKey(University, on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
     admin = models.ForeignKey(User, on_delete=models.CASCADE)
-    # yangi
     month_price = models.IntegerField(blank=True, null=True)
     year_price = models.IntegerField(blank=True, null=True)
     latitude = models.FloatField(blank=True, null=True)
     longitude = models.FloatField(blank=True, null=True)
     rating = models.PositiveIntegerField(blank=True, null=True,
-                                         validators=[MinValueValidator(1), MaxValueValidator(5)])  # validator
+                                         validators=[MinValueValidator(1), MaxValueValidator(5)]
+                                         )
     distance_to_university = models.FloatField(blank=True, null=True, help_text="Universitetgacha masofa (km)")
-
     amenities = models.ManyToManyField(Amenity, related_name='dormitories')
     is_active = models.BooleanField(default=True)
 
@@ -149,14 +146,16 @@ class Room(models.Model):
         return self.name
 
 
+COURSE_CHOICES = (
+    ('1-kurs', '1-kurs'),
+    ('2-kurs', '2-kurs'),
+    ('3-kurs', '3-kurs'),
+    ('4-kurs', '4-kurs'),
+    ('5-kurs', '5-kurs'),
+)
+
+
 class Student(models.Model):
-    COURSE_CHOICES = (
-        ('1-kurs', '1-kurs'),
-        ('2-kurs', '2-kurs'),
-        ('3-kurs', '3-kurs'),
-        ('4-kurs', '4-kurs'),
-        ('5-kurs', '5-kurs'),
-    )
     Gender_CHOICES = (
         ('Erkak', 'Erkak'),
         ('Ayol', 'Ayol'),
@@ -215,6 +214,7 @@ class Application(models.Model):
         ('CANCELLED', 'CANCELLED')
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     middle_name = models.CharField(max_length=255, blank=True, null=True)
@@ -222,17 +222,16 @@ class Application(models.Model):
     district = models.ForeignKey(District, on_delete=models.CASCADE, default=1)
     faculty = models.CharField(max_length=255, blank=True, null=True)
     direction = models.CharField(max_length=255, blank=True, null=True)
-    dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
-    passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
+    course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs')
     group = models.CharField(max_length=120, blank=True, null=True)
+    phone = models.IntegerField(blank=True, null=True)
+    passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
+    user_image = models.ImageField(upload_to='student_pictures/', blank=True, null=True)
+    document = models.FileField(blank=True, null=True)
     status = models.CharField(choices=STATUS_CHOICES, max_length=20, default='PENDING')
     comment = models.TextField(blank=True, null=True)
     admin_comment = models.TextField(blank=True, null=True)
-    document = models.FileField(blank=True, null=True)
-    university = models.CharField(blank=True, null=True, max_length=255)
-    phone = models.IntegerField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    user_image = models.ImageField(upload_to='student_pictures/', blank=True, null=True)
     passport_image_first = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     passport_image_second = models.ImageField(upload_to='passport_image/', blank=True, null=True)
 
@@ -249,11 +248,11 @@ class Payment(models.Model):
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
     amount = models.IntegerField()
     paid_date = models.DateTimeField(auto_now_add=True)
-    valid_until = models.DateField(blank=True, null=True)  # yangi
+    valid_until = models.DateField(blank=True, null=True)
     method = models.CharField(choices=(('Cash', 'Cash'), ('Card', 'Card')), max_length=20)
     status = models.CharField(choices=(('APPROVED', 'APPROVED'), ('CANCELLED', 'CANCELLED')),
                               max_length=20)
-    comment = models.TextField(blank=True, null=True)  # yangi
+    comment = models.TextField(blank=True, null=True)
 
     class Meta:
         verbose_name = 'Payment'
@@ -279,16 +278,6 @@ class Task(models.Model):
 
 
 class Apartment(models.Model):
-    # Asosiy ma'lumotlar
-    title = models.CharField(max_length=255, blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
-
-    # Joylashuv va narx
-    province = models.ForeignKey(Province, on_delete=models.CASCADE, related_name='apartments')
-    exact_address = models.CharField(max_length=255, blank=True, null=True)
-    monthly_price = models.IntegerField(blank=True, null=True)
-
-    # Xona ma'lumotlari
     ROOM_TYPE_CHOICES = (
         ('1 kishilik', '1 kishilik'),
         ('2 kishilik', '2 kishilik'),
@@ -300,6 +289,11 @@ class Apartment(models.Model):
         ('Erkak', 'Erkak'),
         ('Ayol', 'Ayol'),
     )
+    title = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    province = models.ForeignKey(Province, on_delete=models.CASCADE, related_name='apartments')
+    exact_address = models.CharField(max_length=255, blank=True, null=True)
+    monthly_price = models.IntegerField(blank=True, null=True)
     room_type = models.CharField(max_length=32, choices=ROOM_TYPE_CHOICES, default='Oilaviy')
     gender = models.CharField(max_length=16, choices=GENDER_CHOICES, default='Erkak')
     total_rooms = models.PositiveIntegerField(default=1)
@@ -329,14 +323,11 @@ class Notification(models.Model):
         ('all_admins', 'Barcha adminlar'),
         ('specific_user', 'Ma\'lum foydalanuvchi'),
     )
-
     message = models.TextField(help_text="Bildirishnoma matni")
     image = models.ImageField(upload_to='notifications/', blank=True, null=True, help_text="Bildirishnoma rasmi")
-
     target_type = models.CharField(max_length=20, choices=TARGET_CHOICES, default='specific_user')
     target_user = models.ForeignKey(User, on_delete=models.CASCADE, blank=True, null=True,
                                     help_text="Agar specific_user tanlansa, bu foydalanuvchi")
-
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True, help_text="Bildirishnoma faolmi")
 

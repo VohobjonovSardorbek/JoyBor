@@ -1,24 +1,22 @@
-
 from pathlib import Path
 import os
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-=5%junkucgsvnl+#v8(f$6styr015$gx7*6@d=q-j@6ku!p3s('
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-DEBUG = True
+SECRET_KEY = config("DJANGO_SECRET_KEY", default="CHANGE_ME_IMMEDIATELY")
 
-ALLOWED_HOSTS = ['*']
-
+DEBUG = config("DEBUG", cast=bool, default=True)
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
 
 # Application definition
 
@@ -38,18 +36,51 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     # 'main.apps.MainConfig',
+    # for google
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+    'rest_framework.authtoken',
 ]
+REST_AUTH_TOKEN_MODEL = None
 
-# ASGI_APPLICATION = 'core.asgi.application'
-#
-# CHANNEL_LAYERS = {
-#     "default": {
-#         "BACKEND": "channels_redis.core.RedisChannelLayer",
-#         "CONFIG": {
-#             "hosts": [os.environ.get("REDIS_URL")],  # Redis ishga tushgan bo'lishi kerak
-#         },
-#     },
-# }
+REST_USE_JWT = True
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+)
+
+# Yangi django-allauth sozlamalari
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}  # login: username yoki email
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_VERIFICATION = "none"
+
+# Google OAuth sozlamalari
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            "client_id": config("GOOGLE_CLIENT_ID", default=""),
+            "secret": config("GOOGLE_CLIENT_SECRET", default=""),
+            'key': ""
+        },
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "offline"},
+        "OAUTH_PKCE_ENABLED": True,
+    }
+}
+
+# Google OAuth qo'shimcha sozlamalar
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+SOCIALACCOUNT_STORE_TOKENS = True
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -60,6 +91,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -104,15 +137,15 @@ REST_FRAMEWORK = {
 }
 
 SWAGGER_SETTINGS = {
-'SECURITY_DEFINITIONS': {
-    'Basic': {
-    'type': 'basic'
-},
-    'Bearer': {
-        'type': 'apiKey',
-        'name': 'Authorization',
-        'in': 'header'
-            }
+    'SECURITY_DEFINITIONS': {
+        'Basic': {
+            'type': 'basic'
+        },
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
     }
 }
 
@@ -125,7 +158,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -148,7 +180,6 @@ AUTH_PASSWORD_VALIDATORS = [
     # },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
@@ -160,7 +191,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
@@ -171,7 +201,7 @@ if DEBUG:
 else:
     STATIC_ROOT = BASE_DIR / 'static'
 
-MEDIA_URL ='/media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
@@ -179,3 +209,5 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'main.User'
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

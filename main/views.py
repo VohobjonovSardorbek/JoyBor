@@ -27,11 +27,84 @@ from django.utils.timezone import localtime, now, is_naive, make_aware
 from django.utils import timezone
 from django.db import transaction
 from .serializers import UserProfileUpdateSerializer
-import random
-import string
-from django.core.mail import send_mail
 from django.conf import settings
-from datetime import timedelta
+from google.oauth2 import id_token
+from google.auth.transport import requests
+
+
+class GoogleLoginAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    @swagger_auto_schema(request_body=GoogleLoginSerializer,
+                         operation_description="Login with Google and receive JWT access & refresh tokens",
+                         responses={200: "JWT tokens and user info"})
+    def post(self, request):
+        serializer = GoogleLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data['token']
+
+        try:
+            # Google ID token tekshirish
+            client_id = settings.SOCIALACCOUNT_PROVIDERS['google']['APP']['client_id']
+            if not client_id:
+                return Response({"error": "Google Client ID not configured"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            idinfo = id_token.verify_oauth2_token(
+                token, requests.Request(), client_id
+            )
+            
+            # Token muddati tekshirish
+            if idinfo['exp'] < timezone.now().timestamp():
+                return Response({"error": "Token expired"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            email = idinfo.get('email')
+            if not email:
+                return Response({"error": "Email not found in token"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Foydalanuvchi yaratish yoki topish
+            username = email.split('@')[0]
+            # Username konfliktini oldini olish
+            counter = 1
+            original_username = username
+            while User.objects.filter(username=username).exists():
+                username = f"{original_username}{counter}"
+                counter += 1
+            
+            user, created = User.objects.get_or_create(
+                email=email, 
+                defaults={
+                    'username': username,
+                    'role': 'student',
+                    'first_name': idinfo.get('given_name', ''),
+                    'last_name': idinfo.get('family_name', '')
+                }
+            )
+            
+            # Agar foydalanuvchi allaqachon mavjud bo'lsa, ma'lumotlarni yangilash
+            if not created:
+                user.first_name = idinfo.get('given_name', user.first_name)
+                user.last_name = idinfo.get('family_name', user.last_name)
+                user.save()
+
+            # UserProfile yaratish
+            profile, profile_created = UserProfile.objects.get_or_create(user=user)
+
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'role': user.role,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'is_new_user': created
+            })
+
+        except ValueError as e:
+            return Response({"error": f"Invalid Google token: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"Authentication failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserListAPIView(ListAPIView):
@@ -175,43 +248,11 @@ class DormitoryCreateAPIView(CreateAPIView):
     queryset = Dormitory.objects.all()
     serializer_class = DormitorySerializer
     permission_classes = [IsAdmin]
-    # parser_classes = [MultiPartParser, FormParser]
-    #
-    # @swagger_auto_schema(
-    #     manual_parameters=[
-    #         openapi.Parameter('name', openapi.IN_FORM, type=openapi.TYPE_STRING),
-    #         openapi.Parameter('address', openapi.IN_FORM, type=openapi.TYPE_STRING),
-    #         openapi.Parameter('description', openapi.IN_FORM, type=openapi.TYPE_STRING),
-    #         openapi.Parameter('month_price', openapi.IN_FORM, type=openapi.TYPE_NUMBER),
-    #         openapi.Parameter('year_price', openapi.IN_FORM, type=openapi.TYPE_NUMBER),
-    #         openapi.Parameter('latitude', openapi.IN_FORM, type=openapi.TYPE_NUMBER),
-    #         openapi.Parameter('longitude', openapi.IN_FORM, type=openapi.TYPE_NUMBER),
-    #         openapi.Parameter(
-    #             'images',
-    #             openapi.IN_FORM,
-    #             type=openapi.TYPE_FILE,
-    #             description='Upload one or more images. Use Postman for multiple files.',
-    #             required=False
-    #         ),
-    #     ]
-    # )
-    # def post(self, request, *args, **kwargs):
-    #     return super().post(request, *args, **kwargs)
 
 
 class DormitoryDetailAPIView(RetrieveUpdateDestroyAPIView):
     queryset = Dormitory.objects.all()
     permission_classes = [IsOwnerOrIsAdmin]
-
-    # parser_classes = [MultiPartParser, FormParser]
-    #
-    # @swagger_auto_schema(auto_schema=None)
-    # def put(self, request, *args, **kwargs):
-    #     return super().post(request, *args, **kwargs)
-    #
-    # @swagger_auto_schema(auto_schema=None)
-    # def patch(self, request, *args, **kwargs):
-    #     return super().post(request, *args, **kwargs)
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -588,7 +629,6 @@ class ExportStudentExcelAPIView(APIView):
         return response
 
 
-# Room status constants (agar modelda constants bo'lsa, ulardan foydalaning)
 ROOM_STATUS_AVAILABLE = 'AVAILABLE'
 ROOM_STATUS_PARTIALLY = 'PARTIALLY_OCCUPIED'
 ROOM_STATUS_FULL = 'FULLY_OCCUPIED'
@@ -769,7 +809,6 @@ class ExportPaymentExcelAPIView(APIView):
         ws = wb.active
         ws.title = "To'lovlar"
 
-        # O'zbekcha ustun nomlari
         ws.append([
             '№',
             'Talaba ismi',
@@ -786,7 +825,6 @@ class ExportPaymentExcelAPIView(APIView):
 
         payments = Payment.objects.select_related('student', 'student__room').filter(dormitory=dormitory)
 
-        # 1 dan boshlab tartib raqamini qo'shish
         for index, payment in enumerate(payments, start=1):
             ws.append([
                 index,  # payment.id o‘rniga oddiy tartib raqami
@@ -875,26 +913,22 @@ class AdminDashboardAPIView(APIView):
     permission_classes = [IsDormitoryAdmin]
 
     def get(self, request):
-        # 1. Dormitory olish
         dormitory = Dormitory.objects.filter(admin=request.user).first()
         if not dormitory:
             return Response({"detail": "Dormitory not found"}, status=404)
 
-        # 2. Talabalar statistikasi
         students_stats = Student.objects.filter(dormitory=dormitory).aggregate(
             total=Count('id'),
             male=Count('id', filter=Q(gender='Erkak')),
             female=Count('id', filter=Q(gender='Ayol')),
         )
 
-        # 3. Xonalar statistikasi (faqat shu yotoqxonaga tegishli)
         rooms_stats = Room.objects.filter(floor__dormitory=dormitory).aggregate(
             total_rooms=Count('id'),
             male_rooms=Count('id', filter=Q(gender='male')),
             female_rooms=Count('id', filter=Q(gender='female'))
         )
 
-        # 4. To‘lovlar statistikasi
         payments = Payment.objects.filter(dormitory=dormitory, status='APPROVED')
         payment_stats = payments.aggregate(
             total_payment=Sum('amount')
@@ -904,7 +938,6 @@ class AdminDashboardAPIView(APIView):
         non_debtor_students = Student.objects.filter(dormitory=dormitory, status='Haqdor').count()
         unplaced_student = Student.objects.filter(dormitory=dormitory, status='Tekshirilmaydi').count()
 
-        # 5. Arizalar statistikasi
         applications = Application.objects.filter(dormitory=dormitory)
         application_stats = applications.aggregate(
             total=Count('id'),
@@ -913,7 +946,6 @@ class AdminDashboardAPIView(APIView):
         )
         recent_applications = applications.order_by('-created_at')[:10]
 
-        # 6. Yig‘ish
         data = {
             "students": students_stats,
             "rooms": {
@@ -1200,7 +1232,6 @@ class ApartmentImageDetailAPIView(RetrieveUpdateDestroyAPIView):
         return ApartmentImage.objects.filter(apartment__user=self.request.user)
 
 
-# Notification Views
 class NotificationCreateView(CreateAPIView):
     serializer_class = NotificationCreateSerializer
     permission_classes = [IsAdmin]
@@ -1363,6 +1394,7 @@ class StatisticsAPIView(APIView):
 class ApplicationNotificationListView(ListAPIView):
     serializer_class = ApplicationNotificationSerializer
     permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         user = self.request.user
 
@@ -1391,6 +1423,3 @@ class ApplicationNotificationRetrieveAPIView(RetrieveAPIView):
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
-
-
-
