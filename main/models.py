@@ -333,8 +333,6 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-        verbose_name = 'Bildirishnoma'
-        verbose_name_plural = 'Bildirishnomalar'
 
     def __str__(self):
         return f"{self.message} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
@@ -367,3 +365,40 @@ class ApplicationNotification(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.message[:30]}"
+
+
+class Like(models.Model):
+    """Dormitory va Apartment uchun like tizimi"""
+    CONTENT_TYPE_CHOICES = (
+        ('dormitory', 'Dormitory'),
+        ('apartment', 'Apartment'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
+    content_type = models.CharField(max_length=20, choices=CONTENT_TYPE_CHOICES)
+    object_id = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['user', 'content_type', 'object_id']
+        ordering = ['-created_at']
+        verbose_name = 'Like'
+        verbose_name_plural = 'Likes'
+    
+    def __str__(self):
+        return f"{self.user.username} liked {self.content_type} #{self.object_id}"
+    
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        
+        # Object mavjudligini tekshirish
+        if self.content_type == 'dormitory':
+            if not Dormitory.objects.filter(id=self.object_id).exists():
+                raise ValidationError("Dormitory topilmadi")
+        elif self.content_type == 'apartment':
+            if not Apartment.objects.filter(id=self.object_id).exists():
+                raise ValidationError("Apartment topilmadi")
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)

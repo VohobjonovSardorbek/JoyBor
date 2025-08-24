@@ -289,6 +289,7 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
     university = UniversityShortSerializer(read_only=True)
     admin = UserShortSerializer(read_only=True)
     admin_phone_number = serializers.SerializerMethodField()
+    admin_telegram = serializers.SerializerMethodField()
     images = DormitoryImageSerializer(read_only=True, many=True)
     total_capacity = serializers.SerializerMethodField()
     available_capacity = serializers.SerializerMethodField()
@@ -300,12 +301,15 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
         model = Dormitory
         fields = ['id', 'university', 'admin', 'name', 'address',
                   'description', 'images', 'month_price', 'year_price',
-                  'latitude', 'longitude', 'amenities', 'admin_phone_number', 'is_active',
+                  'latitude', 'longitude', 'amenities', 'admin_phone_number', 'admin_telegram', 'is_active',
                   'total_capacity', 'available_capacity', 'total_rooms', 'distance_to_university', 'rules'
         ]
 
     def get_admin_phone_number(self, obj):
         return getattr(obj.admin.profile, 'phone', None)
+
+    def get_admin_telegram(self, obj):
+        return getattr(obj.admin.profile, 'telegram', None)
 
     def get_total_capacity(self, obj):
         return Room.objects.filter(floor__dormitory=obj).aggregate(total=Sum('capacity'))['total'] or 0
@@ -570,7 +574,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
         model = Application
         fields = ['id', 'dormitory', 'name', 'last_name', 'middle_name', 'province',
                   'district', 'faculty', 'direction', 'course', 'group', 'phone',
-                  'passport', 'comment', 'admin_comment', 'document', 'user_image',
+                  'passport', 'status', 'comment', 'admin_comment', 'document', 'user_image',
                   'passport_image_first', 'passport_image_second',
                   ]
 
@@ -790,4 +794,36 @@ class ApplicationNotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = ApplicationNotification
         fields = "__all__"
+
+
+class ApplicationNotificationReadSerializer(serializers.Serializer):
+    notification_id = serializers.IntegerField(help_text="O'qildi deb belgilash uchun notification ID si")
+
+
+class LikeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Like
+        fields = ['id', 'content_type', 'object_id', 'created_at']
+        read_only_fields = ['user', 'created_at']
+
+
+class LikeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Like
+        fields = ['content_type', 'object_id']
+    
+    def validate(self, attrs):
+        content_type = attrs.get('content_type')
+        object_id = attrs.get('object_id')
+        
+        if content_type == 'dormitory':
+            if not Dormitory.objects.filter(id=object_id).exists():
+                raise serializers.ValidationError("Dormitory topilmadi")
+        elif content_type == 'apartment':
+            if not Apartment.objects.filter(id=object_id).exists():
+                raise serializers.ValidationError("Apartment topilmadi")
+        else:
+            raise serializers.ValidationError("Noto'g'ri content_type")
+        
+        return attrs
         read_only_fields = ["user", "created_at"]

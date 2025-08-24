@@ -1423,3 +1423,255 @@ class ApplicationNotificationRetrieveAPIView(RetrieveAPIView):
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+class ApplicationNotificationMarkAsReadAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        request_body=ApplicationNotificationReadSerializer,
+        operation_description="Application notification ni o'qildi deb belgilash (faqat notification_id yuborish kerak)",
+        responses={
+            200: openapi.Response(
+                description="Muvaffaqiyatli o'qildi deb belgilandi",
+                examples={
+                    "application/json": {
+                        "detail": "Bildirishnoma o'qildi deb belgilandi",
+                        "notification_id": 1
+                    }
+                }
+            ),
+            404: openapi.Response(
+                description="Bildirishnoma topilmadi",
+                examples={
+                    "application/json": {
+                        "error": "Bildirishnoma topilmadi"
+                    }
+                }
+            ),
+            400: openapi.Response(
+                description="Xato ma'lumotlar",
+                examples={
+                    "application/json": {
+                        "notification_id": ["Bu maydon majburiy"]
+                    }
+                }
+            )
+        }
+    )
+    def post(self, request):
+        serializer = ApplicationNotificationReadSerializer(data=request.data)
+        if serializer.is_valid():
+            notification_id = serializer.validated_data['notification_id']
+            
+            try:
+                notification = ApplicationNotification.objects.get(
+                    id=notification_id,
+                    user=request.user
+                )
+                notification.is_read = True
+                notification.save(update_fields=['is_read'])
+                
+                return Response({
+                    'detail': 'Bildirishnoma o\'qildi deb belgilandi',
+                    'notification_id': notification_id
+                })
+            except ApplicationNotification.DoesNotExist:
+                return Response(
+                    {'error': 'Bildirishnoma topilmadi'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ApplicationNotificationMarkAllAsReadAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Barcha application notification larni o'qildi deb belgilash",
+        responses={
+            200: openapi.Response(
+                description="Muvaffaqiyatli barchasi o'qildi deb belgilandi",
+                examples={
+                    "application/json": {
+                        "detail": "Barcha bildirishnomalar o'qildi deb belgilandi",
+                        "updated_count": 5
+                    }
+                }
+            )
+        }
+    )
+    def post(self, request):
+        updated_count = ApplicationNotification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).update(is_read=True)
+        
+        return Response({
+            'detail': 'Barcha bildirishnomalar o\'qildi deb belgilandi',
+            'updated_count': updated_count
+        })
+
+
+class LikeToggleAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        request_body=LikeCreateSerializer,
+        operation_description="Dormitory yoki Apartment ga like qo'yish yoki olib tashlash",
+        responses={
+            200: openapi.Response(
+                description="Like muvaffaqiyatli qo'shildi yoki olib tashlandi",
+                examples={
+                    "application/json": {
+                        "detail": "Like qo'shildi",
+                        "is_liked": True,
+                        "like_id": 1
+                    }
+                }
+            ),
+            400: openapi.Response(
+                description="Xato ma'lumotlar",
+                examples={
+                    "application/json": {
+                        "error": "Ma'lumotlar noto'g'ri"
+                    }
+                }
+            )
+        }
+    )
+    def post(self, request):
+        serializer = LikeCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            content_type = serializer.validated_data['content_type']
+            object_id = serializer.validated_data['object_id']
+            
+            # Like mavjudligini tekshirish
+            existing_like = Like.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=object_id
+            ).first()
+            
+            if existing_like:
+                # Like mavjud bo'lsa, uni o'chirish
+                existing_like.delete()
+                return Response({
+                    'detail': 'Like olib tashlandi',
+                    'is_liked': False,
+                    'like_id': None
+                })
+            else:
+                # Like mavjud bo'lmasa, qo'shish
+                like = Like.objects.create(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=object_id
+                )
+                return Response({
+                    'detail': 'Like qo\'shildi',
+                    'is_liked': True,
+                    'like_id': like.id
+                })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class LikeStatusAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Dormitory yoki Apartment ning like holatini tekshirish",
+        manual_parameters=[
+            openapi.Parameter(
+                'content_type',
+                openapi.IN_QUERY,
+                description="Content type (dormitory yoki apartment)",
+                type=openapi.TYPE_STRING,
+                required=True
+            ),
+            openapi.Parameter(
+                'object_id',
+                openapi.IN_QUERY,
+                description="Object ID",
+                type=openapi.TYPE_INTEGER,
+                required=True
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description="Like holati",
+                examples={
+                    "application/json": {
+                        "is_liked": True,
+                        "total_likes": 15
+                    }
+                }
+            )
+        }
+    )
+    def get(self, request):
+        content_type = request.query_params.get('content_type')
+        object_id = request.query_params.get('object_id')
+        
+        if not content_type or not object_id:
+            return Response(
+                {'error': 'content_type va object_id kerak'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            object_id = int(object_id)
+        except ValueError:
+            return Response(
+                {'error': 'object_id raqam bo\'lishi kerak'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Foydalanuvchining like qo'yganligini tekshirish
+        is_liked = Like.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=object_id
+        ).exists()
+        
+        # Umumiy like sonini hisoblash
+        total_likes = Like.objects.filter(
+            content_type=content_type,
+            object_id=object_id
+        ).count()
+        
+        return Response({
+            'is_liked': is_liked,
+            'total_likes': total_likes
+        })
+
+
+class UserLikesAPIView(ListAPIView):
+    serializer_class = LikeSerializer
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Foydalanuvchining barcha like lari",
+        manual_parameters=[
+            openapi.Parameter(
+                'content_type',
+                openapi.IN_QUERY,
+                description="Content type filter (dormitory yoki apartment)",
+                type=openapi.TYPE_STRING,
+                required=False
+            )
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        queryset = Like.objects.filter(user=self.request.user)
+        content_type = self.request.query_params.get('content_type')
+        
+        if content_type:
+            queryset = queryset.filter(content_type=content_type)
+        
+        return queryset

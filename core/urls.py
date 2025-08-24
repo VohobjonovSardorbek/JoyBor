@@ -112,6 +112,13 @@ urlpatterns += [
 
     path('application_notifications/', ApplicationNotificationListView.as_view(), name='application-notification-list'),
     path('application_notification/<int:pk>/', ApplicationNotificationRetrieveAPIView.as_view(), name='application-notification-retrieve'),
+    path('application_notifications/mark-read/', ApplicationNotificationMarkAsReadAPIView.as_view(), name='application-notification-mark-read'),
+    path('application_notifications/mark-all-read/', ApplicationNotificationMarkAllAsReadAPIView.as_view(), name='application-notification-mark-all-read'),
+    
+    # Like endpoints
+    path('likes/toggle/', LikeToggleAPIView.as_view(), name='like-toggle'),
+    path('likes/status/', LikeStatusAPIView.as_view(), name='like-status'),
+    path('likes/my/', UserLikesAPIView.as_view(), name='user-likes'),
 
     # path('notifications/', NotificationListView.as_view(), name='notification-list'),
     # path('notification/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
