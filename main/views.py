@@ -1397,7 +1397,7 @@ class UnreadNotificationCountView(APIView):
 
 
 class StatisticsAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         data = {
