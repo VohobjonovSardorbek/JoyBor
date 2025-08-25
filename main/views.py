@@ -757,9 +757,13 @@ class ApplicationCreateAPIView(CreateAPIView):
 
 
 class ApplicationDetailAPIView(RetrieveUpdateDestroyAPIView):
-    serializer_class = ApplicationSerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
+
+    def get_serializer_class(self):
+        if self.request.method in ['PATCH', 'PUT']:
+            return ApplicationSerializer
+        return ApplicationSafeSerializer
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
