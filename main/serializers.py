@@ -662,6 +662,7 @@ class DashboardSerializer(serializers.Serializer):
     recent_applications = RecentApplicationSerializer(many=True)
 
 
+
 class MonthlyRevenueSerializer(serializers.Serializer):
     month = serializers.CharField()
     revenue = serializers.IntegerField()

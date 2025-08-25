@@ -17,7 +17,7 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from django.db.models import Count, Sum, Q, Prefetch
+from django.db.models import Count, Sum, Q, Prefetch, F, Case, When, IntegerField
 from rest_framework.filters import SearchFilter
 from rest_framework.parsers import MultiPartParser, FormParser
 from .filters import StudentFilter, ApplicationFilter, TaskFilter
@@ -927,10 +927,23 @@ class AdminDashboardAPIView(APIView):
             female=Count('id', filter=Q(gender='Ayol')),
         )
 
-        rooms_stats = Room.objects.filter(floor__dormitory=dormitory).aggregate(
-            total_rooms=Count('id'),
-            male_rooms=Count('id', filter=Q(gender='male')),
-            female_rooms=Count('id', filter=Q(gender='female'))
+        rooms_qs = Room.objects.filter(floor__dormitory=dormitory)
+        rooms_stats = rooms_qs.aggregate(
+            available_places_total=Sum(F('capacity') - F('currentOccupancy')),
+            available_places_male=Sum(
+                Case(
+                    When(gender='male', then=F('capacity') - F('currentOccupancy')),
+                    default=0,
+                    output_field=IntegerField()
+                )
+            ),
+            available_places_female=Sum(
+                Case(
+                    When(gender='female', then=F('capacity') - F('currentOccupancy')),
+                    default=0,
+                    output_field=IntegerField()
+                )
+            ),
         )
 
         payments = Payment.objects.filter(dormitory=dormitory, status='APPROVED')
@@ -953,9 +966,9 @@ class AdminDashboardAPIView(APIView):
         data = {
             "students": students_stats,
             "rooms": {
-                "total_rooms": rooms_stats['total_rooms'] or 0,
-                "male_rooms": rooms_stats['male_rooms'] or 0,
-                "female_rooms": rooms_stats['female_rooms'] or 0,
+                "available_places_total": rooms_stats['available_places_total'] or 0,
+                "available_places_male": rooms_stats['available_places_male'] or 0,
+                "available_places_female": rooms_stats['available_places_female'] or 0,
             },
             "payments": {
                 "debtor_students_count": debtor_students,
