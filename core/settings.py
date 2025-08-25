@@ -16,7 +16,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("DJANGO_SECRET_KEY", default="CHANGE_ME_IMMEDIATELY")
 
 DEBUG = config("DEBUG", cast=bool, default=True)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
+# ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -57,7 +58,7 @@ AUTHENTICATION_BACKENDS = (
 )
 
 # Yangi django-allauth sozlamalari
-ACCOUNT_LOGIN_METHODS = {'username', 'email'}  # login: username yoki email
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = "none"

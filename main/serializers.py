@@ -243,7 +243,7 @@ class UniversityShortSerializer(serializers.ModelSerializer):
 class DormitoryShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Dormitory
-        fields = ['id', 'name']
+        fields = ['id', 'name', 'month_price', 'university']
 
 
 class DormitoryImageSafeSerializer(serializers.ModelSerializer):
