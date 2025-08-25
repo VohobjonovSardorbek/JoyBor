@@ -241,9 +241,13 @@ class UniversityShortSerializer(serializers.ModelSerializer):
 
 
 class DormitoryShortSerializer(serializers.ModelSerializer):
+    university = serializers.SerializerMethodField()
     class Meta:
         model = Dormitory
         fields = ['id', 'name', 'month_price', 'university']
+
+    def get_university(self, obj):
+        return obj.university.name
 
 
 class DormitoryImageSafeSerializer(serializers.ModelSerializer):
