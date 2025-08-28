@@ -1,9 +1,12 @@
-from django.db.models.signals import post_save
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 # from channels.layers import get_channel_layer
 # from asgiref.sync import async_to_sync
-from .models import Application, Payment, User, UserProfile, Notification, UserNotification, ApplicationNotification
+from .models import Application, Payment, User, UserProfile, Notification, UserNotification, ApplicationNotification, Task, Floor, Room
 from django.utils import timezone
+
+from rest_framework import serializers
 
 
 @receiver(post_save, sender=User)
@@ -22,34 +25,67 @@ def create_application_notification(sender, instance, created, **kwargs):
                 message=f"Yangi ariza tushdi: {instance.name} sizning yotoqxonangiz uchun."
             )
 
+    # Ariza egasiga status o'zgarishi haqida xabar yuborish
+    if not created and instance.status in ['APPROVED', 'REJECTED']:
+        if instance.user:
+            if instance.status == 'APPROVED':
+                msg = f"Arizangiz tasdiqlandi: {instance.dormitory.name}."
+            else:
+                msg = f"Arizangiz rad etildi: {instance.dormitory.name}."
+            ApplicationNotification.objects.create(
+                user=instance.user,
+                message=msg
+            )
+
 
 @receiver(post_save, sender=Payment)
-def update_student_status_after_payment(sender, instance, created, **kwargs):
+def update_student_status_after_payment(sender, instance, **kwargs):
     """
-    Yangi payment qo‘shilganda talaba statusini avtomatik yangilash.
+    Har safar Payment qo‘shilganda yoki yangilanganda
+    talabaning statusini tekshirish va kerak bo‘lsa yangilash.
     """
-    if not created or instance.status != 'APPROVED':
-        return  # Faqat yangi va APPROVED to‘lovlar uchun ishlaydi
 
     student = instance.student
     today = timezone.now().date()
 
-    # 1. Joylashish jarayonida bo‘lsa
+    # 1️⃣ Joylashish jarayonida bo‘lsa
     if student.placement_status == 'Qabul qilindi':
         new_status = 'Tekshirilmaydi'
     else:
-        # 2. Oxirgi APPROVED to‘lovni olish
+        # 2️⃣ Oxirgi tasdiqlangan to‘lovni olish
         last_payment = student.payments.filter(status='APPROVED').order_by('-valid_until').first()
+
         if not last_payment or not last_payment.valid_until or last_payment.valid_until < today:
             new_status = 'Qarzdor'
         else:
             new_status = 'Haqdor'
 
-    # 3. Faqat status o‘zgarganda saqlash
+    # 3️⃣ Faqat status o‘zgarganda saqlash
     if student.status != new_status:
         student.status = new_status
         student.save(update_fields=['status'])
 
+    # 4️⃣ Agar yangi payment tasdiqlangan bo‘lsa — application egasiga xabar yuborish
+    if instance.status == 'APPROVED' and student.passport:
+        try:
+            related_app = (
+                Application.objects
+                .filter(passport=student.passport)
+                .order_by('-created_at')
+                .select_related('user')
+                .first()
+            )
+            if related_app and related_app.user:
+                ApplicationNotification.objects.create(
+                    user=related_app.user,
+                    message=f"Sizning nomingizga {instance.amount} so'm to‘lov tasdiqlandi."
+                )
+        except ObjectDoesNotExist:
+            # Agar Application topilmasa, signal jim o'tadi
+            pass
+        except Exception as e:
+            # Xatolikni loglash mumkin
+            print(f"Notification yaratishda xatolik: {e}")
 
 @receiver(post_save, sender=Notification)
 def create_user_notifications(sender, instance, created, **kwargs):
@@ -69,3 +105,57 @@ def create_user_notifications(sender, instance, created, **kwargs):
             UserNotification(user=user, notification=instance) for user in users
         ]
         UserNotification.objects.bulk_create(user_notifications, ignore_conflicts=True)
+
+
+@receiver(post_save, sender=Task)
+def create_task_reminder(sender, instance, created, **kwargs):
+    """
+    Task yaratilganda yoki yangilanganda reminder yaratish
+    """
+    if created and instance.reminder_date and not instance.reminder_sent:
+        # Reminder vaqti kelganda foydalanuvchiga xabar yuborish
+        if instance.reminder_date <= timezone.now():
+            ApplicationNotification.objects.create(
+                user=instance.user,
+                message=f"Eslatma: {instance.description} - Bu vazifa bajarilishi kerak!"
+            )
+            instance.reminder_sent = True
+            instance.save(update_fields=['reminder_sent'])
+
+
+@receiver(pre_save, sender=Floor)
+def check_floor_name_uniqueness(sender, instance, **kwargs):
+    """
+    Floor nomi yotoqxona ichida unique bo'lishini tekshirish
+    """
+    if instance.pk:  # Yangilash holatida
+        try:
+            existing_floor = Floor.objects.get(pk=instance.pk)
+            if existing_floor.name != instance.name:
+                # Nom o'zgartirilgan, tekshirish kerak
+                if Floor.objects.filter(dormitory=instance.dormitory, name=instance.name).exclude(pk=instance.pk).exists():
+                    raise serializers.ValidationError(f"'{instance.name}' nomli qavat sizning yotoqxonangizda allaqachon mavjud!")
+        except Floor.DoesNotExist:
+            pass
+    else:  # Yangi yaratish holatida
+        if Floor.objects.filter(dormitory=instance.dormitory, name=instance.name).exists():
+            raise serializers.ValidationError(f"'{instance.name}' nomli qavat sizning yotoqxonangizda allaqachon mavjud!")
+
+
+@receiver(pre_save, sender=Room)
+def check_room_name_uniqueness(sender, instance, **kwargs):
+    """
+    Room nomi floor ichida unique bo'lishini tekshirish
+    """
+    if instance.pk:  # Yangilash holatida
+        try:
+            existing_room = Room.objects.get(pk=instance.pk)
+            if existing_room.name != instance.name:
+                # Nom o'zgartirilgan, tekshirish kerak
+                if Room.objects.filter(floor=instance.floor, name=instance.name).exclude(pk=instance.pk).exists():
+                    raise serializers.ValidationError(f"'{instance.name}' nomli xona bu qavatda allaqachon mavjud!")
+        except Room.DoesNotExist:
+            pass
+    else:  # Yangi yaratish holatida
+        if Room.objects.filter(floor=instance.floor, name=instance.name).exists():
+            raise serializers.ValidationError(f"'{instance.name}' nomli xona bu qavatda allaqachon mavjud!")

@@ -296,6 +296,8 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
     admin_telegram = serializers.SerializerMethodField()
     images = DormitoryImageSerializer(read_only=True, many=True)
     total_capacity = serializers.SerializerMethodField()
+    approved_applications = SerializerMethodField()
+    accepted_students = SerializerMethodField()
     available_capacity = serializers.SerializerMethodField()
     total_rooms = serializers.SerializerMethodField()
     amenities = AmenitySerializer(many=True, read_only=True)
@@ -305,8 +307,10 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
         model = Dormitory
         fields = ['id', 'university', 'admin', 'name', 'address',
                   'description', 'images', 'month_price', 'year_price',
-                  'latitude', 'longitude', 'amenities', 'admin_phone_number', 'admin_telegram', 'is_active',
-                  'total_capacity', 'available_capacity', 'total_rooms', 'distance_to_university', 'rules'
+                  'latitude', 'longitude', 'amenities', 'admin_phone_number',
+                  'admin_telegram', 'is_active', 'total_capacity', 'accepted_students',
+                  'approved_applications', 'available_capacity', 'total_rooms',
+                  'distance_to_university', 'rules'
         ]
 
     def get_admin_phone_number(self, obj):
@@ -325,17 +329,25 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
             available += room.capacity - room.currentOccupancy
         return available
 
+    def get_accepted_students(self, obj):
+        return Student.objects.filter(dormitory=obj, placement_status='Joylashdi').count()
+
+    def get_approved_applications(self, obj):
+        return Application.objects.filter(dormitory=obj, status='APPROVED').count()
+
     def get_total_rooms(self, obj):
         return Room.objects.filter(floor__dormitory=obj).count()
 
 
 class DormitorySerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Dormitory
         fields = [
             'name', 'university', 'address', 'description', 'admin', 'amenities', 'is_active',
-            'month_price', 'year_price', 'latitude', 'longitude', 'distance_to_university'
+            'month_price', 'year_price', 'latitude', 'longitude', 'distance_to_university',
         ]
+
 
 
 class MyDormitorySerializer(serializers.ModelSerializer):
@@ -366,6 +378,21 @@ class FloorSerializer(serializers.ModelSerializer):
         model = Floor
         fields = ['id', 'name', 'gender']
 
+    def validate_name(self, value):
+        request = self.context.get('request')
+        user = request.user
+        
+        try:
+            dormitory = Dormitory.objects.get(admin=user)
+        except Dormitory.DoesNotExist:
+            raise serializers.ValidationError("Sizga hech qanday yotoqxona biriktirilmagan")
+        
+        # Nom unique bo'lishini tekshirish
+        if Floor.objects.filter(dormitory=dormitory, name=value).exists():
+            raise serializers.ValidationError(f"'{value}' nomli qavat sizning yotoqxonangizda allaqachon mavjud!")
+        
+        return value
+
     def create(self, validated_data):
         request = self.context.get('request')
         user = request.user
@@ -386,10 +413,17 @@ class FloorShortSerializer(serializers.ModelSerializer):
         fields = ['id', 'name']
 
 
+class TaskSafeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ['id', 'description', 'status', 'reminder_date', 'created_at']
+
+
+
 class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
-        fields = ['id', 'description', 'status']
+        fields = ['id', 'description', 'status', 'reminder_date']
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -421,6 +455,14 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = ['id', 'name', 'floor', 'capacity']
+
+    def validate_name(self, value):
+        floor = self.initial_data.get('floor')
+        if floor:
+            # Nom unique bo'lishini tekshirish
+            if Room.objects.filter(floor_id=floor, name=value).exists():
+                raise serializers.ValidationError(f"'{value}' nomli xona bu qavatda allaqachon mavjud!")
+        return value
 
     def create(self, validated_data):
         floor = validated_data.get('floor')
@@ -481,13 +523,15 @@ class StudentSerializer(serializers.ModelSerializer):
     picture = serializers.ImageField(required=False)
     passport_image_first = serializers.ImageField(required=False)
     passport_image_second = serializers.ImageField(required=False)
+    # Arizadan ma'lumotlarni (shu jumladan rasm maydonlarini) ko'chirish uchun
+    application_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = Student
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date',
                   'passport', 'group', 'course', 'gender', 'passport_image_first', 'passport_image_second',
-                  'privilege_share']
+                  'privilege_share', 'application_id']
         read_only_fields = ['accepted_date']
         extra_kwargs = {
             'privilege': {'required': False},
@@ -524,6 +568,24 @@ class StudentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Sizga yotoqxona biriktirilmagan')
 
         validated_data['dormitory'] = dormitory
+
+        # Agar application_id yuborilgan bo'lsa, Application dan ma'lumotlarni ko'chirish
+        application_id = validated_data.pop('application_id', None)
+        application_instance = None
+        if application_id is not None:
+            application_instance = Application.objects.filter(id=application_id, dormitory=dormitory).first()
+            if not application_instance:
+                raise serializers.ValidationError({
+                    'application_id': 'Ariza topilmadi yoki sizning yotoqxonangizga tegishli emas.'
+                })
+
+            # Faqat rasm maydonlarini ko'chirish
+            if not validated_data.get('picture') and getattr(application_instance, 'user_image', None):
+                validated_data['picture'] = application_instance.user_image
+            if not validated_data.get('passport_image_first') and getattr(application_instance, 'passport_image_first', None):
+                validated_data['passport_image_first'] = application_instance.passport_image_first
+            if not validated_data.get('passport_image_second') and getattr(application_instance, 'passport_image_second', None):
+                validated_data['passport_image_second'] = application_instance.passport_image_second
 
         floor = validated_data.get('floor')
         room = validated_data.get('room')

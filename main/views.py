@@ -1012,10 +1012,14 @@ class RoomStatusStatsAPIView(APIView):
 
 
 class TasksListCreateAPIView(ListCreateAPIView):
-    serializer_class = TaskSerializer
     permission_classes = [IsDormitoryAdmin]
     filter_backends = [DjangoFilterBackend]
     filterset_class = TaskFilter
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return TaskSafeSerializer
+        return TaskSerializer
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1026,8 +1030,12 @@ class TasksListCreateAPIView(ListCreateAPIView):
 
 
 class TaskDetailAPIView(RetrieveUpdateDestroyAPIView):
-    serializer_class = TaskSerializer
     permission_classes = [IsDormitoryAdmin]
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return TaskSafeSerializer
+        return TaskSerializer
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1248,58 +1256,58 @@ class ApartmentImageDetailAPIView(RetrieveUpdateDestroyAPIView):
             return ApartmentImage.objects.none()
         return ApartmentImage.objects.filter(apartment__user=self.request.user)
 
+#
+# class NotificationCreateView(CreateAPIView):
+#     serializer_class = NotificationCreateSerializer
+#     permission_classes = [IsAdmin]
+#     parser_classes = [MultiPartParser, FormParser]
+#
+#     def perform_create(self, serializer):
+#         notification = serializer.save()
+#
+#         # Foydalanuvchilarni aniqlash va bildirishnoma yuborish
+#         target_type = notification.target_type
+#
+#         if target_type == 'all_students':
+#             users = User.objects.filter(role='student')
+#         elif target_type == 'all_admins':
+#             users = User.objects.filter(role='admin')
+#         elif target_type == 'specific_user':
+#             users = [notification.target_user] if notification.target_user else []
+#         else:
+#             users = []
+#
+#         # UserNotification yaratish
+#         user_notifications = []
+#         for user in users:
+#             user_notifications.append(
+#                 UserNotification(user=user, notification=notification)
+#             )
+#
+#         UserNotification.objects.bulk_create(user_notifications, ignore_conflicts=True)
+#
+#         return notification
 
-class NotificationCreateView(CreateAPIView):
-    serializer_class = NotificationCreateSerializer
-    permission_classes = [IsAdmin]
-    parser_classes = [MultiPartParser, FormParser]
-
-    def perform_create(self, serializer):
-        notification = serializer.save()
-
-        # Foydalanuvchilarni aniqlash va bildirishnoma yuborish
-        target_type = notification.target_type
-
-        if target_type == 'all_students':
-            users = User.objects.filter(role='student')
-        elif target_type == 'all_admins':
-            users = User.objects.filter(role='admin')
-        elif target_type == 'specific_user':
-            users = [notification.target_user] if notification.target_user else []
-        else:
-            users = []
-
-        # UserNotification yaratish
-        user_notifications = []
-        for user in users:
-            user_notifications.append(
-                UserNotification(user=user, notification=notification)
-            )
-
-        UserNotification.objects.bulk_create(user_notifications, ignore_conflicts=True)
-
-        return notification
-
-
-class NotificationListView(ListAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-
-        if not user.is_authenticated:
-            return Notification.objects.none()
-
-        if user.is_superuser:
-            # Superadmin barcha bildirishnomalarni ko'radi
-            return Notification.objects.filter(is_active=True)
-        else:
-            # Oddiy foydalanuvchilar faqat o'zlariga yuborilganlarni ko'radi
-            return Notification.objects.filter(
-                recipients__user=user,
-                is_active=True
-            )
+#
+# class NotificationListView(ListAPIView):
+#     serializer_class = NotificationSerializer
+#     permission_classes = [IsAuthenticated]
+#
+#     def get_queryset(self):
+#         user = self.request.user
+#
+#         if not user.is_authenticated:
+#             return Notification.objects.none()
+#
+#         if user.is_superuser:
+#             # Superadmin barcha bildirishnomalarni ko'radi
+#             return Notification.objects.filter(is_active=True)
+#         else:
+#             # Oddiy foydalanuvchilar faqat o'zlariga yuborilganlarni ko'radi
+#             return Notification.objects.filter(
+#                 recipients__user=user,
+#                 is_active=True
+#             )
 
 
 class UserNotificationListView(ListAPIView):
@@ -1307,10 +1315,46 @@ class UserNotificationListView(ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+
         return UserNotification.objects.filter(
             user=self.request.user,
             notification__is_active=True
         )
+
+    def list(self, request, *args, **kwargs):
+        # System notificationlar (UserNotification)
+        system_qs = self.get_queryset().select_related('notification')
+        system_items = []
+        for un in system_qs:
+            system_items.append({
+                'id': un.id,
+                'message': un.notification.message,
+                'image_url': NotificationSerializer(un.notification, context={'request': request}).data.get('image_url'),
+                'is_read': un.is_read,
+                'created_at': un.notification.created_at,
+            })
+
+        # Application notificationlar
+        app_qs = ApplicationNotification.objects.filter(user=request.user)
+        app_items = []
+        for an in app_qs:
+            app_items.append({
+                'id': an.id,
+                'message': an.message,
+                'image_url': None,
+                'is_read': an.is_read,
+                'created_at': an.created_at,
+            })
+
+        combined = system_items + app_items
+        combined.sort(key=lambda x: x['created_at'], reverse=True)
+
+        # Sana formatlash
+        for item in combined:
+            if item['created_at']:
+                item['created_at'] = localtime(item['created_at']).strftime('%Y-%m-%d %H:%M:%S')
+
+        return Response({'notifications': combined})
 
 
 class MarkNotificationReadView(APIView):
@@ -1362,38 +1406,82 @@ class MarkNotificationReadView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class NotificationDetailView(RetrieveUpdateDestroyAPIView):
-    serializer_class = NotificationSerializer
-    permission_classes = [IsAdmin]
+class NotificationDetailView(RetrieveAPIView):
+    serializer_class = UserNotificationSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
+        if getattr(self, 'swagger_fake_view', False):
+            return UserNotification.objects.none()
 
-        if not user.is_authenticated:
-            return Notification.objects.none()
+        return UserNotification.objects.filter(
+            user=self.request.user,
+            notification__is_active=True
+        )
 
-        if user.is_superuser:
-            return Notification.objects.all()
-        else:
-            return Notification.objects.none()
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
 
-    def perform_destroy(self, instance):
-        if not self.request.user.is_superuser:
-            raise PermissionDenied("Faqat superadmin bildirishnoma o'chira oladi")
-        instance.delete()
+        if not instance.is_read:
+            instance.is_read = True
+            instance.save(update_fields=["is_read"])
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
 class UnreadNotificationCountView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        count = UserNotification.objects.filter(
+        system_unread = UserNotification.objects.filter(
             user=request.user,
             is_read=False,
             notification__is_active=True
         ).count()
+        application_unread = ApplicationNotification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).count()
 
-        return Response({'unread_count': count})
+        return Response({'unread_count': system_unread + application_unread})
+
+
+class NotificationsMarkAllReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Barcha (system + application) bildirishnomalarni o'qildi deb belgilash",
+        responses={
+            200: openapi.Response(
+                description="Muvaffaqiyatli barchasi o'qildi deb belgilandi",
+                examples={
+                    "application/json": {
+                        "detail": "Barcha bildirishnomalar o'qildi deb belgilandi",
+                        "updated_system": 3,
+                        "updated_application": 2
+                    }
+                }
+            )
+        }
+    )
+    def post(self, request):
+        updated_system = UserNotification.objects.filter(
+            user=request.user,
+            is_read=False,
+            notification__is_active=True
+        ).update(is_read=True)
+
+        updated_application = ApplicationNotification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).update(is_read=True)
+
+        return Response({
+            'detail': 'Barcha bildirishnomalar o\'qildi deb belgilandi',
+            'updated_system': updated_system,
+            'updated_application': updated_application
+        })
 
 
 class StatisticsAPIView(APIView):
@@ -1408,16 +1496,7 @@ class StatisticsAPIView(APIView):
         return Response(data)
 
 
-class ApplicationNotificationListView(ListAPIView):
-    serializer_class = ApplicationNotificationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-
-        if not user.is_authenticated:
-            return ApplicationNotification.objects.none()
-        return ApplicationNotification.objects.filter(user=user)
+ 
 
 
 class ApplicationNotificationRetrieveAPIView(RetrieveAPIView):
@@ -1502,33 +1581,7 @@ class ApplicationNotificationMarkAsReadAPIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class ApplicationNotificationMarkAllAsReadAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @swagger_auto_schema(
-        operation_description="Barcha application notification larni o'qildi deb belgilash",
-        responses={
-            200: openapi.Response(
-                description="Muvaffaqiyatli barchasi o'qildi deb belgilandi",
-                examples={
-                    "application/json": {
-                        "detail": "Barcha bildirishnomalar o'qildi deb belgilandi",
-                        "updated_count": 5
-                    }
-                }
-            )
-        }
-    )
-    def post(self, request):
-        updated_count = ApplicationNotification.objects.filter(
-            user=request.user,
-            is_read=False
-        ).update(is_read=True)
-        
-        return Response({
-            'detail': 'Barcha bildirishnomalar o\'qildi deb belgilandi',
-            'updated_count': updated_count
-        })
+ 
 
 
 class LikeToggleAPIView(APIView):

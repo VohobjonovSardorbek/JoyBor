@@ -224,7 +224,7 @@ class Application(models.Model):
     direction = models.CharField(max_length=255, blank=True, null=True)
     course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs')
     group = models.CharField(max_length=120, blank=True, null=True)
-    phone = models.IntegerField(blank=True, null=True)
+    phone = models.CharField(blank=True, null=True, max_length=25)
     passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
     user_image = models.ImageField(upload_to='student_pictures/', blank=True, null=True)
     document = models.FileField(blank=True, null=True)
@@ -272,6 +272,8 @@ class Task(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks')
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    reminder_date = models.DateTimeField(blank=True, null=True, help_text="Eslatma vaqti")
+    reminder_sent = models.BooleanField(default=False, help_text="Eslatma yuborilganmi")
 
     def __str__(self):
         return self.description

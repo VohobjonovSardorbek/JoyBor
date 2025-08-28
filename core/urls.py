@@ -33,11 +33,10 @@ urlpatterns += [
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('profile/', UserProfileView.as_view(), name='user-profile'),
 
-    path('notifications/create/', NotificationCreateView.as_view(), name='notification-create'),
-    path('notifications/', NotificationListView.as_view(), name='notification-list'),
     path('notifications/my/', UserNotificationListView.as_view(), name='my-notifications'),
     path('notifications/<int:pk>/', NotificationDetailView.as_view(), name='notification-detail'),
     path('notifications/mark-read/', MarkNotificationReadView.as_view(), name='mark-notification-read'),
+    path('notifications/mark-all-read/', NotificationsMarkAllReadView.as_view(), name='mark-all-notifications-read'),
     path('notifications/unread-count/', UnreadNotificationCountView.as_view(), name='unread-count'),
 
     path('users/', UserListAPIView.as_view(), name='user-list'),
@@ -110,23 +109,13 @@ urlpatterns += [
 
     path('statistics/', StatisticsAPIView.as_view(), name='statistics-list'),
 
-    path('application_notifications/', ApplicationNotificationListView.as_view(), name='application-notification-list'),
-    path('application_notification/<int:pk>/', ApplicationNotificationRetrieveAPIView.as_view(), name='application-notification-retrieve'),
+    path('application_notifications/<int:pk>/', ApplicationNotificationRetrieveAPIView.as_view(), name='application-notification-retrieve'),
     path('application_notifications/mark-read/', ApplicationNotificationMarkAsReadAPIView.as_view(), name='application-notification-mark-read'),
-    path('application_notifications/mark-all-read/', ApplicationNotificationMarkAllAsReadAPIView.as_view(), name='application-notification-mark-all-read'),
     
     # Like endpoints
     path('likes/toggle/', LikeToggleAPIView.as_view(), name='like-toggle'),
     path('likes/status/', LikeStatusAPIView.as_view(), name='like-status'),
     path('likes/my/', UserLikesAPIView.as_view(), name='user-likes'),
-
-    # path('notifications/', NotificationListView.as_view(), name='notification-list'),
-    # path('notification/<int:pk>/read/', NotificationMarkReadView.as_view(), name='notification-read'),
-    # path('notifications_by_superadmin/', NotificationAdminListView.as_view(), name='notification-list'),
-    # path('notifications_by_superadmin/<int:pk>/read/', MarkNotificationAsReadAPIView.as_view(),
-    #      name='notification-read'),
-    # path('notifications_by_superadmin/create/', NotificationAdminCreateView.as_view(), name='notification-create'),
-    # path('notifications_by_superadmin/<int:pk>/', NotificationAdminDetailView.as_view(), name='notification-detail'),
 
     path('apartment_images/', ApartmentImageListCreateAPIView.as_view(), name='apartment-image-list-create'),
     path('apartment_images/<int:pk>/', ApartmentImageDetailAPIView.as_view(), name='apartment-image-detail'),
