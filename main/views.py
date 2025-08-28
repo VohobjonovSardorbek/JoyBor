@@ -1732,16 +1732,45 @@ class UserLikesAPIView(ListAPIView):
                 type=openapi.TYPE_STRING,
                 required=False
             )
-        ]
+        ],
+        responses={
+            200: openapi.Response(
+                description="Foydalanuvchining like lari",
+                examples={
+                    "application/json": {
+                        "id": 1,
+                        "content_type": "dormitory",
+                        "object_id": 5,
+                        "created_at": "2024-01-15T10:30:00Z",
+                        "dormitory_data": {
+                            "id": 5,
+                            "name": "Yotoqxona nomi",
+                            "address": "Manzil",
+                            "description": "Tavsif",
+                            "month_price": 500000,
+                            "year_price": 5000000,
+                            "distance_to_university": 2.5,
+                            "is_active": True,
+                            "university_name": "Universitet nomi",
+                            "admin_username": "admin_username",
+                            "amenities": ["WiFi", "Konditsioner"],
+                            "total_students": 150,
+                            "approved_applications": 25
+                        },
+                        "apartment_data": None
+                    }
+                }
+            )
+        }
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = Like.objects.filter(user=self.request.user)
+        queryset = Like.objects.filter(user=self.request.user).select_related('user')
         content_type = self.request.query_params.get('content_type')
         
         if content_type:
             queryset = queryset.filter(content_type=content_type)
         
-        return queryset
+        return queryset.order_by('-created_at')

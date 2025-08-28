@@ -7,7 +7,6 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import get_user_model
-from .models import UserProfile
 
 User = get_user_model()
 
@@ -868,10 +867,54 @@ class ApplicationNotificationReadSerializer(serializers.Serializer):
 
 
 class LikeSerializer(serializers.ModelSerializer):
+    data = serializers.SerializerMethodField()
+
     class Meta:
         model = Like
-        fields = ['id', 'content_type', 'object_id', 'created_at']
+        fields = ['id', 'content_type', 'object_id', 'created_at', 'data']
         read_only_fields = ['user', 'created_at']
+
+    def get_data(self, obj):
+        if obj.content_type == 'dormitory':
+            dormitory = Dormitory.objects.filter(id=obj.object_id).first()
+            if dormitory:
+                return {
+                    "type": "dormitory",
+                    "id": dormitory.id,
+                    "name": dormitory.name,
+                    "address": dormitory.address,
+                    "description": dormitory.description,
+                    "month_price": dormitory.month_price,
+                    "year_price": dormitory.year_price,
+                    "distance_to_university": dormitory.distance_to_university,
+                    "is_active": dormitory.is_active,
+                    "university_name": dormitory.university.name if dormitory.university else None,
+                    "admin_username": dormitory.admin.username if dormitory.admin else None,
+                    "total_students": Student.objects.filter(dormitory=dormitory).count(),
+                    "approved_applications": Application.objects.filter(dormitory=dormitory, status='APPROVED').count(),
+                }
+        elif obj.content_type == 'apartment':
+            apartment = Apartment.objects.filter(id=obj.object_id).first()
+            if apartment:
+                return {
+                    "type": "apartment",
+                    "id": apartment.id,
+                    "title": apartment.title,
+                    "description": apartment.description,
+                    "exact_address": apartment.exact_address,
+                    "monthly_price": apartment.monthly_price,
+                    "room_type": apartment.room_type,
+                    "gender": apartment.gender,
+                    "total_rooms": apartment.total_rooms,
+                    "available_rooms": apartment.available_rooms,
+                    "phone_number": apartment.phone_number,
+                    "is_active": apartment.is_active,
+                    "province_name": apartment.province.name if apartment.province else None,
+                    "owner_username": apartment.user.username if apartment.user else None,
+                    "created_at": apartment.created_at,
+                }
+        return None
+
 
 
 class LikeCreateSerializer(serializers.ModelSerializer):
