@@ -7,6 +7,9 @@ from django.db.models import Sum
 from django.db.models.functions import TruncMonth
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User as AuthUser
+from django.db import transaction
+from .models import Application, ApplicationNotification
 
 User = get_user_model()
 
@@ -530,8 +533,8 @@ class StudentSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
                   'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date',
                   'passport', 'group', 'course', 'gender', 'passport_image_first', 'passport_image_second',
-                  'privilege_share', 'application_id']
-        read_only_fields = ['accepted_date']
+                  'privilege_share', 'application_id', 'user']
+        read_only_fields = ['accepted_date', 'user']
         extra_kwargs = {
             'privilege': {'required': False},
         }
@@ -543,7 +546,7 @@ class StudentSerializer(serializers.ModelSerializer):
             import re
             if not re.match(r'^[A-Z]{2}\d{7}$', passport):
                 raise serializers.ValidationError({
-                    'passport_number': "Pasport raqami noto‘g‘ri. Masalan: AA1234567 formatida bo‘lishi kerak."
+                    'passport_number': "Pasport raqami noto'g'ri. Masalan: AA1234567 formatida bo'lishi kerak."
                 })
             attrs['passport'] = passport
 
@@ -555,6 +558,7 @@ class StudentSerializer(serializers.ModelSerializer):
 
         return attrs
 
+    @transaction.atomic
     def create(self, validated_data):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
@@ -571,12 +575,18 @@ class StudentSerializer(serializers.ModelSerializer):
         # Agar application_id yuborilgan bo'lsa, Application dan ma'lumotlarni ko'chirish
         application_id = validated_data.pop('application_id', None)
         application_instance = None
+        student_user = None
+        
         if application_id is not None:
             application_instance = Application.objects.filter(id=application_id, dormitory=dormitory).first()
             if not application_instance:
                 raise serializers.ValidationError({
                     'application_id': 'Ariza topilmadi yoki sizning yotoqxonangizga tegishli emas.'
                 })
+            
+            # Ariza egasining userini olish
+            if application_instance.user:
+                student_user = application_instance.user
 
             # Faqat rasm maydonlarini ko'chirish
             if not validated_data.get('picture') and getattr(application_instance, 'user_image', None):
@@ -585,6 +595,27 @@ class StudentSerializer(serializers.ModelSerializer):
                 validated_data['passport_image_first'] = application_instance.passport_image_first
             if not validated_data.get('passport_image_second') and getattr(application_instance, 'passport_image_second', None):
                 validated_data['passport_image_second'] = application_instance.passport_image_second
+        
+        # Agar ariza egasining useri yo'q bo'lsa, yangi user yaratish
+        if not student_user:
+            User = get_user_model()
+            username = validated_data.get('passport') or validated_data.get('phone')
+            if not username:
+                raise serializers.ValidationError("Passport yoki telefon raqami talab qilinadi")
+            
+            # Username unique bo'lishini tekshirish
+            if User.objects.filter(username=username).exists():
+                raise serializers.ValidationError(f"Bu passport/telefon raqami bilan foydalanuvchi allaqachon mavjud")
+            
+            # Yangi user yaratish
+            student_user = User.objects.create_user(
+                username=username,
+                password=validated_data.get('name', 'default_password'),
+                role='student',
+                email=f"{username}@example.com"  # Vaqtinchalik email
+            )
+
+        validated_data['user'] = student_user
 
         floor = validated_data.get('floor')
         room = validated_data.get('room')
@@ -608,6 +639,13 @@ class StudentSerializer(serializers.ModelSerializer):
                 room.status = 'FULLY_OCCUPIED'
 
             room.save()
+
+        # Agar arizasiz yaratilgan bo'lsa, notification yaratish
+        if not application_instance and student_user:
+            ApplicationNotification.objects.create(
+                user=user,
+                message=f"Sizning yangi {validated_data.get('name')} ismli talabangizning ma'lumotlari: login: {student_user.username}, parol: {validated_data.get('name', 'default_password')}"
+            )
 
         return student
 

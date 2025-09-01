@@ -165,6 +165,7 @@ class Student(models.Model):
         ('Haqdor', 'Haqdor'),
         ('Tekshirilmaydi', 'Tekshirilmaydi'),
     )
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student', blank=True, null=True)
     name = models.CharField(max_length=120)
     last_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
     middle_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
