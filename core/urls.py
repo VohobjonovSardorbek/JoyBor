@@ -119,6 +119,20 @@ urlpatterns += [
 
     path('apartment_images/', ApartmentImageListCreateAPIView.as_view(), name='apartment-image-list-create'),
     path('apartment_images/<int:pk>/', ApartmentImageDetailAPIView.as_view(), name='apartment-image-detail'),
+
+
+    path('leaders/', FloorLeaderListCreateAPIView.as_view(), name='leader-list-create'),
+    path('leaders/<int:pk>/', FloorLeaderDetailAPIView.as_view(), name='leader-detail'),
+
+    path('collections/', CollectionListAPIView.as_view(), name='collection-list'),
+    path('collections/create/', CollectionCreateAPIView.as_view(), name='collection-create'),
+    path('collections/<int:pk>/', CollectionDetailAPIView.as_view(), name='collection-detail'),
+    path('collection-records/<int:collection_id>/bulk-update/', CollectionRecordBulkUpdateAPIView.as_view(), name='collection-record-bulk-update'),
+
+    path('attendance-sessions/', AttendanceSessionListAPIView.as_view(), name='attendance-session-list'),
+    path('attendance-sessions/create/', AttendanceSessionCreateAPIView.as_view(), name='attendance-session-create'),
+    path('attendance-sessions/<int:pk>/', AttendanceSessionDetailAPIView.as_view(), name='attendance-session-detail'),
+    path("attendance-records/<int:session_id>/bulk-update/", AttendanceRecordBulkUpdateAPIView.as_view(), name="attendance-bulk-update"),
 ]
 
 urlpatterns += [

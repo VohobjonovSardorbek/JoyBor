@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
@@ -8,6 +9,7 @@ class User(AbstractUser):
         ('student', 'student'),
         ('admin', 'admin'),
         ('ijarachi', 'ijarachi'),
+        ('floor_leader', 'floor_leader'),
     )
     role = models.CharField(choices=ROLE_CHOICES, max_length=20)
     email = models.EmailField(blank=True, null=True, unique=True)
@@ -405,3 +407,85 @@ class Like(models.Model):
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
+
+
+class FloorLeader(models.Model):
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name='leader')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='floor_leader')
+
+    class Meta:
+        unique_together = ("floor", "user")
+
+    def __str__(self):
+        return f"{self.user} - {self.floor} qavat sardori"
+
+
+class AttendanceSession(models.Model):
+    date = models.DateField(auto_now_add=True)
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name='sessions')
+    leader = models.ForeignKey(FloorLeader, on_delete=models.CASCADE, related_name='sessions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("date", "floor")
+
+    def __str__(self):
+        return f"{self.date} - {self.floor} qavat davomat"
+
+
+class AttendanceRecord(models.Model):
+    class Status(models.TextChoices):
+        PRESENT = "Hozir", "Hozir"
+        LATE = "Kech", "Kech"
+        ABSENT = "Yo‘q", "Yo‘q"
+
+    session = models.ForeignKey(
+        AttendanceSession,
+        on_delete=models.CASCADE,
+        related_name="records"
+    )
+    student = models.ForeignKey(
+        Student,
+        on_delete=models.CASCADE,
+        related_name="attendance_records"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PRESENT
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("session", "student")
+
+    def __str__(self):
+        return f"{self.student} - {self.session.date} - {self.status}"
+
+class Collection(models.Model):
+    title = models.CharField(max_length=100)
+    amount = models.PositiveIntegerField(blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    deadline = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name='collections', blank=True, null=True)
+    leader = models.ForeignKey('FloorLeader', on_delete=models.CASCADE, related_name='collections', blank=True, null=True)
+
+    def __str__(self):
+        return self.title
+
+
+class CollectionRecord(models.Model):
+    class Status(models.TextChoices):
+        PAID = "To‘lagan", "To‘lagan"
+        UNPAID = "To‘lamagan", "To‘lamagan"
+
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, related_name='records')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='collection_records')
+    status = models.CharField(choices=Status.choices, max_length=30)
+
+    class Meta:
+        unique_together = ("collection", "student")
+
+    def __str__(self):
+        return f"{self.student} - {self.collection} ({self.status})"

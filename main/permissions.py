@@ -40,3 +40,12 @@ class IsIjarachiAdmin(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and (request.user.role == 'ijarachi' or request.user.is_superuser)
 
+
+class IsFloorLeader(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        # role flag or record existence
+        if getattr(request.user, 'role', None) == 'floor_leader':
+            return FloorLeader.objects.filter(user=request.user).exists()
+        return FloorLeader.objects.filter(user=request.user).exists()

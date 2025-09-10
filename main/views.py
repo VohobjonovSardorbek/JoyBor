@@ -13,7 +13,7 @@ from django.http import Http404
 from .permissions import *
 from .serializers import *
 from .models import *
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, NotFound
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -47,16 +47,17 @@ class GoogleLoginAPIView(APIView):
             # Google ID token tekshirish
             client_id = settings.SOCIALACCOUNT_PROVIDERS['google']['APP']['client_id']
             if not client_id:
-                return Response({"error": "Google Client ID not configured"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+                return Response({"error": "Google Client ID not configured"},
+                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
             idinfo = id_token.verify_oauth2_token(
                 token, requests.Request(), client_id
             )
-            
+
             # Token muddati tekshirish
             if idinfo['exp'] < timezone.now().timestamp():
                 return Response({"error": "Token expired"}, status=status.HTTP_400_BAD_REQUEST)
-            
+
             email = idinfo.get('email')
             if not email:
                 return Response({"error": "Email not found in token"}, status=status.HTTP_400_BAD_REQUEST)
@@ -69,9 +70,9 @@ class GoogleLoginAPIView(APIView):
             while User.objects.filter(username=username).exists():
                 username = f"{original_username}{counter}"
                 counter += 1
-            
+
             user, created = User.objects.get_or_create(
-                email=email, 
+                email=email,
                 defaults={
                     'username': username,
                     'role': 'student',
@@ -79,7 +80,7 @@ class GoogleLoginAPIView(APIView):
                     'last_name': idinfo.get('family_name', '')
                 }
             )
-            
+
             # Agar foydalanuvchi allaqachon mavjud bo'lsa, ma'lumotlarni yangilash
             if not created:
                 user.first_name = idinfo.get('given_name', user.first_name)
@@ -1256,6 +1257,7 @@ class ApartmentImageDetailAPIView(RetrieveUpdateDestroyAPIView):
             return ApartmentImage.objects.none()
         return ApartmentImage.objects.filter(apartment__user=self.request.user)
 
+
 #
 # class NotificationCreateView(CreateAPIView):
 #     serializer_class = NotificationCreateSerializer
@@ -1329,7 +1331,8 @@ class UserNotificationListView(ListAPIView):
             system_items.append({
                 'id': un.id,
                 'message': un.notification.message,
-                'image_url': NotificationSerializer(un.notification, context={'request': request}).data.get('image_url'),
+                'image_url': NotificationSerializer(un.notification, context={'request': request}).data.get(
+                    'image_url'),
                 'is_read': un.is_read,
                 'created_at': un.notification.created_at,
             })
@@ -1496,9 +1499,6 @@ class StatisticsAPIView(APIView):
         return Response(data)
 
 
- 
-
-
 class ApplicationNotificationRetrieveAPIView(RetrieveAPIView):
     serializer_class = ApplicationNotificationSerializer
     permission_classes = [IsAuthenticated]
@@ -1559,7 +1559,7 @@ class ApplicationNotificationMarkAsReadAPIView(APIView):
         serializer = ApplicationNotificationReadSerializer(data=request.data)
         if serializer.is_valid():
             notification_id = serializer.validated_data['notification_id']
-            
+
             try:
                 notification = ApplicationNotification.objects.get(
                     id=notification_id,
@@ -1567,7 +1567,7 @@ class ApplicationNotificationMarkAsReadAPIView(APIView):
                 )
                 notification.is_read = True
                 notification.save(update_fields=['is_read'])
-                
+
                 return Response({
                     'detail': 'Bildirishnoma o\'qildi deb belgilandi',
                     'notification_id': notification_id
@@ -1577,11 +1577,8 @@ class ApplicationNotificationMarkAsReadAPIView(APIView):
                     {'error': 'Bildirishnoma topilmadi'},
                     status=status.HTTP_404_NOT_FOUND
                 )
-        
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
- 
 
 
 class LikeToggleAPIView(APIView):
@@ -1616,14 +1613,14 @@ class LikeToggleAPIView(APIView):
         if serializer.is_valid():
             content_type = serializer.validated_data['content_type']
             object_id = serializer.validated_data['object_id']
-            
+
             # Like mavjudligini tekshirish
             existing_like = Like.objects.filter(
                 user=request.user,
                 content_type=content_type,
                 object_id=object_id
             ).first()
-            
+
             if existing_like:
                 # Like mavjud bo'lsa, uni o'chirish
                 existing_like.delete()
@@ -1644,7 +1641,7 @@ class LikeToggleAPIView(APIView):
                     'is_liked': True,
                     'like_id': like.id
                 })
-        
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -1684,13 +1681,13 @@ class LikeStatusAPIView(APIView):
     def get(self, request):
         content_type = request.query_params.get('content_type')
         object_id = request.query_params.get('object_id')
-        
+
         if not content_type or not object_id:
             return Response(
                 {'error': 'content_type va object_id kerak'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             object_id = int(object_id)
         except ValueError:
@@ -1698,20 +1695,20 @@ class LikeStatusAPIView(APIView):
                 {'error': 'object_id raqam bo\'lishi kerak'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         # Foydalanuvchining like qo'yganligini tekshirish
         is_liked = Like.objects.filter(
             user=request.user,
             content_type=content_type,
             object_id=object_id
         ).exists()
-        
+
         # Umumiy like sonini hisoblash
         total_likes = Like.objects.filter(
             content_type=content_type,
             object_id=object_id
         ).count()
-        
+
         return Response({
             'is_liked': is_liked,
             'total_likes': total_likes
@@ -1769,8 +1766,329 @@ class UserLikesAPIView(ListAPIView):
     def get_queryset(self):
         queryset = Like.objects.filter(user=self.request.user).select_related('user')
         content_type = self.request.query_params.get('content_type')
-        
+
         if content_type:
             queryset = queryset.filter(content_type=content_type)
-        
+
         return queryset.order_by('-created_at')
+
+
+class AttendanceSessionListAPIView(ListAPIView):
+    serializer_class = AttendanceSessionSafeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.role == 'admin' and hasattr(user, "dormitory") and user.dormitory:
+            return AttendanceSession.objects.filter(
+                floor__dormitory__admin=user
+            )
+
+        elif user.role == 'floor_leader':
+            if hasattr(user, "floor_leader") and user.floor_leader.floor:
+                return AttendanceSession.objects.filter(
+                    floor=user.floor_leader.floor
+                )
+            return AttendanceSession.objects.none()
+
+        return AttendanceSession.objects.none()
+
+
+class AttendanceSessionCreateAPIView(CreateAPIView):
+    serializer_class = AttendanceSessionSerializer
+    permission_classes = [IsFloorLeader, IsDormitoryAdmin]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return AttendanceSession.objects.none()
+        try:
+            leader = FloorLeader.objects.get(user=self.request.user)
+        except FloorLeader.DoesNotExist:
+            return AttendanceSession.objects.none()
+        return AttendanceSession.objects.filter(floor=leader.floor).prefetch_related('records__student')
+
+    def perform_create(self, serializer):
+        # create logikasi serializer ichida yozilgan
+        serializer.save()
+
+
+class AttendanceSessionDetailAPIView(RetrieveAPIView):
+    serializer_class = AttendanceSessionSafeSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "pk"
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return AttendanceSession.objects.none()
+        user = self.request.user
+
+        if user.role == 'admin' and hasattr(user, "dormitory") and user.dormitory:
+            return AttendanceSession.objects.filter(
+                floor__dormitory__admin=user
+            )
+
+        elif user.role == 'floor_leader':
+            if hasattr(user, "floor_leader") and user.floor_leader.floor:
+                return AttendanceSession.objects.filter(
+                    floor=user.floor_leader.floor
+                )
+            return AttendanceSession.objects.none()
+
+        return AttendanceSession.objects.none()
+
+
+class AttendanceRecordBulkUpdateAPIView(APIView):
+    permission_classes = [IsFloorLeader]
+
+    @swagger_auto_schema(
+        request_body=AttendanceRecordBulkUpdateSerializer,  # ❌ many=True emas
+        responses={
+            200: openapi.Response(
+                description="Bulk update muvaffaqiyatli yakunlandi",
+                examples={
+                    "application/json": {
+                        "updated": [
+                            {"id": 10, "student_id": 5, "status": "present"},
+                            {"id": 11, "student_id": 6, "status": "absent"}
+                        ]
+                    }
+                }
+            ),
+            400: "Validation error",
+            404: "Session yoki Record topilmadi"
+        }
+    )
+    def patch(self, request, session_id, *args, **kwargs):
+        serializer = AttendanceRecordBulkUpdateSerializer(data=request.data)  # ❌ many=True emas
+        if serializer.is_valid():
+            records = serializer.validated_data['records']  # ✅ endi ['records'] dan olinadi
+            updated_records = []
+
+            try:
+                session = AttendanceSession.objects.get(id=session_id)
+            except AttendanceSession.DoesNotExist:
+                return Response(
+                    {"detail": f"Session {session_id} topilmadi"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            for record in records:
+                try:
+                    attendance = AttendanceRecord.objects.get(
+                        id=record['id'], session=session
+                    )
+                    if str(attendance.student.id) != str(record['student_id']):
+                        return Response(
+                            {"detail": f"Record {record['id']} student_id mos emas"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                    attendance.status = record['status']
+                    attendance.save()
+                    updated_records.append({
+                        "id": attendance.id,
+                        "student_id": attendance.student.id,
+                        "status": attendance.status,
+                    })
+                except AttendanceRecord.DoesNotExist:
+                    return Response(
+                        {"detail": f"AttendanceRecord {record['id']} bu Sessionda mavjud emas!"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+            return Response({"updated": updated_records}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FloorLeaderListCreateAPIView(ListCreateAPIView):
+    permission_classes = [IsDormitoryAdmin]
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return FloorLeaderCreateSerializer
+        return FloorLeaderSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return FloorLeader.objects.none()
+        try:
+            dormitory = Dormitory.objects.get(admin=self.request.user)
+        except Dormitory.DoesNotExist:
+            return FloorLeader.objects.none()
+        return FloorLeader.objects.filter(floor__dormitory=dormitory).select_related('user', 'floor')
+
+
+class FloorLeaderDetailAPIView(RetrieveDestroyAPIView):
+    serializer_class = FloorLeaderSerializer
+    permission_classes = [IsDormitoryAdmin]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return FloorLeader.objects.none()
+        try:
+            dormitory = Dormitory.objects.get(admin=self.request.user)
+        except Dormitory.DoesNotExist:
+            return FloorLeader.objects.none()
+        return FloorLeader.objects.filter(floor__dormitory=dormitory)
+
+    def perform_destroy(self, instance):
+        user = instance.user
+        super().perform_destroy(instance)
+        # Optional: downgrade role if no other leaderships
+        if not FloorLeader.objects.filter(user=user).exists() and getattr(user, 'role', None) == 'floor_leader':
+            user.role = 'student'  # or leave as is depending on business rules
+            user.save(update_fields=['role'])
+
+
+class CollectionListAPIView(ListAPIView):
+    serializer_class = CollectionSafeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Collection.objects.none()
+
+        user = self.request.user
+        # Admin: show all collections in own dormitory via same endpoint
+        if user.role == 'admin':
+            try:
+                dormitory = Dormitory.objects.get(admin=user)
+            except Dormitory.DoesNotExist:
+                return Collection.objects.none()
+            return Collection.objects.filter(floor__dormitory=dormitory).order_by('-created_at')
+
+        # Floor leader: only own collections
+        try:
+            leader = FloorLeader.objects.get(user=user)
+        except FloorLeader.DoesNotExist:
+            return Collection.objects.none()
+        return Collection.objects.filter(leader=leader).order_by('-created_at')
+
+
+class CollectionCreateAPIView(CreateAPIView):
+    queryset = Collection.objects.all()
+    serializer_class = CollectionSerializer
+    permission_classes = [IsFloorLeader, IsDormitoryAdmin]
+
+
+class CollectionDetailAPIView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return CollectionSafeSerializer
+        return CollectionSerializer
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Collection.objects.none()
+
+        user = self.request.user
+        # Admin can only retrieve; restrict updates/deletes to leaders
+        if self.request.method == 'GET' and user.role == 'admin':
+            try:
+                dormitory = Dormitory.objects.get(admin=user)
+            except Dormitory.DoesNotExist:
+                return Collection.objects.none()
+            return Collection.objects.filter(floor__dormitory=dormitory)
+
+        try:
+            leader = FloorLeader.objects.get(user=user)
+        except FloorLeader.DoesNotExist:
+            return Collection.objects.none()
+        return Collection.objects.filter(leader=leader)
+
+
+class CollectionRecordBulkUpdateAPIView(APIView):
+    """Collection recordlarni bulk update qilish"""
+    permission_classes = [IsFloorLeader]
+
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'collection_id',
+                openapi.IN_PATH,
+                description="Collection ID (yo‘l parametri)",
+                type=openapi.TYPE_INTEGER
+            )
+        ],
+        request_body=CollectionRecordBulkUpdateSerializer,
+        responses={
+            200: openapi.Response(
+                description="Bulk update muvaffaqiyatli yakunlandi",
+                examples={
+                    "application/json": {
+                        "updated": [
+                            {"id": 1, "student_id": 101, "status": "To‘lagan"},
+                            {"id": 2, "student_id": 102, "status": "To‘lamagan"}
+                        ]
+                    }
+                }
+            ),
+            400: "Validation error",
+            403: "Faqat sardor o‘zgartira oladi",
+            404: "Collection yoki Record topilmadi"
+        }
+    )
+    def patch(self, request, collection_id, *args, **kwargs):
+        serializer = CollectionRecordBulkUpdateSerializer(data=request.data)  # ❌ many=True emas
+        if serializer.is_valid():
+            records = serializer.validated_data['records']  # ✅ ['records'] dan olinadi
+            updated_records = []
+
+            # ✅ Collection mavjudligini tekshirish
+            try:
+                collection = Collection.objects.get(id=collection_id)
+            except Collection.DoesNotExist:
+                return Response(
+                    {"detail": f"Collection {collection_id} topilmadi"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            # ✅ Foydalanuvchi sardorligini tekshirish
+            try:
+                leader = FloorLeader.objects.get(user=request.user)
+            except FloorLeader.DoesNotExist:
+                return Response(
+                    {"detail": "Siz qavat sardori emassiz"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            if collection.leader != leader:
+                return Response(
+                    {"detail": "Faqat o‘zingizga tegishli yig‘imni o‘zgartirishingiz mumkin"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # ✅ Recordlarni yangilash
+            for record in records:
+                try:
+                    record_obj = CollectionRecord.objects.get(
+                        id=record['id'], collection=collection
+                    )
+                except CollectionRecord.DoesNotExist:
+                    return Response(
+                        {"detail": f"CollectionRecord {record['id']} bu Collectionda mavjud emas!"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+
+                # student_id mosligini tekshirish
+                if str(record_obj.student.id) != str(record['student_id']):
+                    return Response(
+                        {"detail": f"Record {record['id']} student_id mos emas"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                record_obj.status = record['status']
+                record_obj.save(update_fields=['status'])
+                updated_records.append({
+                    "id": record_obj.id,
+                    "student_id": record_obj.student.id,
+                    "status": record_obj.status
+                })
+
+            return Response({"updated": updated_records}, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

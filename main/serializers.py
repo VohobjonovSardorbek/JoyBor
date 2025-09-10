@@ -113,10 +113,10 @@ class StudentRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Bu email allaqachon mavjud.")
         if User.objects.filter(username=attrs['username']).exists():
             raise serializers.ValidationError("Bu username allaqachon mavjud.")
-        
+
         # Password validatsiyasi
         validate_password(attrs['password'])
-        
+
         return attrs
 
     def create(self, validated_data):
@@ -136,7 +136,7 @@ class StudentRegisterSerializer(serializers.ModelSerializer):
         profile, created = UserProfile.objects.get_or_create(user=user)
         profile.phone = phone
         profile.save()
-        
+
         return user
 
 
@@ -156,10 +156,10 @@ class TenantRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Bu email allaqachon mavjud.")
         if User.objects.filter(username=attrs['username']).exists():
             raise serializers.ValidationError("Bu username allaqachon mavjud.")
-        
+
         # Password validatsiyasi
         validate_password(attrs['password'])
-        
+
         return attrs
 
     def create(self, validated_data):
@@ -172,31 +172,31 @@ class TenantRegisterSerializer(serializers.ModelSerializer):
         )
         user.set_password(validated_data['password'])
         user.save()
-        
+
         # UserProfile yaratish
         profile, created = UserProfile.objects.get_or_create(user=user)
         profile.phone = phone
         profile.save()
-        
+
         return user
 
 
 class GoogleLoginSerializer(serializers.Serializer):
     token = serializers.CharField(
-        required=True, 
+        required=True,
         help_text="Google ID token from frontend",
         max_length=5000,
         trim_whitespace=True
     )
-    
+
     def validate_token(self, value):
         if not value or len(value) < 100:
             raise serializers.ValidationError("Invalid token format")
-        
+
         # Token formatini tekshirish (JWT format)
         if not value.count('.') == 2:
             raise serializers.ValidationError("Invalid JWT token format")
-            
+
         return value
 
 
@@ -244,6 +244,7 @@ class UniversityShortSerializer(serializers.ModelSerializer):
 
 class DormitoryShortSerializer(serializers.ModelSerializer):
     university = serializers.SerializerMethodField()
+
     class Meta:
         model = Dormitory
         fields = ['id', 'name', 'month_price', 'university']
@@ -313,7 +314,7 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
                   'admin_telegram', 'is_active', 'total_capacity', 'accepted_students',
                   'approved_applications', 'available_capacity', 'total_rooms',
                   'distance_to_university', 'rules'
-        ]
+                  ]
 
     def get_admin_phone_number(self, obj):
         return getattr(obj.admin.profile, 'phone', None)
@@ -342,14 +343,12 @@ class DormitorySafeSerializer(serializers.ModelSerializer):
 
 
 class DormitorySerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Dormitory
         fields = [
             'name', 'university', 'address', 'description', 'admin', 'amenities', 'is_active',
             'month_price', 'year_price', 'latitude', 'longitude', 'distance_to_university',
         ]
-
 
 
 class MyDormitorySerializer(serializers.ModelSerializer):
@@ -383,16 +382,16 @@ class FloorSerializer(serializers.ModelSerializer):
     def validate_name(self, value):
         request = self.context.get('request')
         user = request.user
-        
+
         try:
             dormitory = Dormitory.objects.get(admin=user)
         except Dormitory.DoesNotExist:
             raise serializers.ValidationError("Sizga hech qanday yotoqxona biriktirilmagan")
-        
+
         # Nom unique bo'lishini tekshirish
         if Floor.objects.filter(dormitory=dormitory, name=value).exists():
             raise serializers.ValidationError(f"'{value}' nomli qavat sizning yotoqxonangizda allaqachon mavjud!")
-        
+
         return value
 
     def create(self, validated_data):
@@ -419,7 +418,6 @@ class TaskSafeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = ['id', 'description', 'status', 'reminder_date', 'created_at']
-
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -576,14 +574,14 @@ class StudentSerializer(serializers.ModelSerializer):
         application_id = validated_data.pop('application_id', None)
         application_instance = None
         student_user = None
-        
+
         if application_id is not None:
             application_instance = Application.objects.filter(id=application_id, dormitory=dormitory).first()
             if not application_instance:
                 raise serializers.ValidationError({
                     'application_id': 'Ariza topilmadi yoki sizning yotoqxonangizga tegishli emas.'
                 })
-            
+
             # Ariza egasining userini olish
             if application_instance.user:
                 student_user = application_instance.user
@@ -591,22 +589,24 @@ class StudentSerializer(serializers.ModelSerializer):
             # Faqat rasm maydonlarini ko'chirish
             if not validated_data.get('picture') and getattr(application_instance, 'user_image', None):
                 validated_data['picture'] = application_instance.user_image
-            if not validated_data.get('passport_image_first') and getattr(application_instance, 'passport_image_first', None):
+            if not validated_data.get('passport_image_first') and getattr(application_instance, 'passport_image_first',
+                                                                          None):
                 validated_data['passport_image_first'] = application_instance.passport_image_first
-            if not validated_data.get('passport_image_second') and getattr(application_instance, 'passport_image_second', None):
+            if not validated_data.get('passport_image_second') and getattr(application_instance,
+                                                                           'passport_image_second', None):
                 validated_data['passport_image_second'] = application_instance.passport_image_second
-        
+
         # Agar ariza egasining useri yo'q bo'lsa, yangi user yaratish
         if not student_user:
             User = get_user_model()
             username = validated_data.get('passport') or validated_data.get('phone')
             if not username:
                 raise serializers.ValidationError("Passport yoki telefon raqami talab qilinadi")
-            
+
             # Username unique bo'lishini tekshirish
             if User.objects.filter(username=username).exists():
                 raise serializers.ValidationError(f"Bu passport/telefon raqami bilan foydalanuvchi allaqachon mavjud")
-            
+
             # Yangi user yaratish
             student_user = User.objects.create_user(
                 username=username,
@@ -759,7 +759,6 @@ class DashboardSerializer(serializers.Serializer):
     payments = PaymentsStatsSerializer()
     applications = ApplicationsStatsSerializer()
     recent_applications = RecentApplicationSerializer(many=True)
-
 
 
 class MonthlyRevenueSerializer(serializers.Serializer):
@@ -954,16 +953,15 @@ class LikeSerializer(serializers.ModelSerializer):
         return None
 
 
-
 class LikeCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Like
         fields = ['content_type', 'object_id']
-    
+
     def validate(self, attrs):
         content_type = attrs.get('content_type')
         object_id = attrs.get('object_id')
-        
+
         if content_type == 'dormitory':
             if not Dormitory.objects.filter(id=object_id).exists():
                 raise serializers.ValidationError("Dormitory topilmadi")
@@ -972,6 +970,228 @@ class LikeCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Apartment topilmadi")
         else:
             raise serializers.ValidationError("Noto'g'ri content_type")
-        
+
         return attrs
-        read_only_fields = ["user", "created_at"]
+
+
+class FloorLeaderCreateSerializer(serializers.ModelSerializer):
+    """Floor leader yaratish uchun - user ma'lumotlari bilan birga"""
+    username = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, min_length=8)
+    first_name = serializers.CharField(write_only=True, required=False)
+    last_name = serializers.CharField(write_only=True, required=False)
+    email = serializers.EmailField(write_only=True, required=False)
+    phone = serializers.CharField(write_only=True, required=False)
+
+    class Meta:
+        model = FloorLeader
+        fields = ["id", "floor", "username", "password", "first_name", "last_name", "email", "phone"]
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            raise serializers.ValidationError("Authentication required")
+
+        # Only dormitory admin can create leader for own dormitory
+        floor = attrs.get('floor')
+        if not floor:
+            raise serializers.ValidationError("Floor talab qilinadi")
+
+        try:
+            dormitory = Dormitory.objects.get(admin=user)
+        except Dormitory.DoesNotExist:
+            raise serializers.ValidationError("Sizga yotoqxona biriktirilmagan")
+
+        if floor.dormitory_id != dormitory.id:
+            raise serializers.ValidationError("Faqat o'zingizning yotoqxonangiz qavati uchun sardor tayinlaysiz")
+
+        # Username unique bo'lishini tekshirish
+        username = attrs.get('username')
+        if User.objects.filter(username=username).exists():
+            raise serializers.ValidationError("Bu username allaqachon mavjud")
+
+        return attrs
+
+    def create(self, validated_data):
+        # User yaratish
+        user_data = {
+            'username': validated_data.pop('username'),
+            'password': validated_data.pop('password'),
+            'first_name': validated_data.pop('first_name', ''),
+            'last_name': validated_data.pop('last_name', ''),
+            'email': validated_data.pop('email', ''),
+            'role': 'floor_leader'
+        }
+
+        user = User.objects.create_user(**user_data)
+        #
+        phone = validated_data.pop('phone', None)
+
+        # FloorLeader yaratish
+        validated_data['user'] = user
+        return super().create(validated_data)
+
+
+class FloorLeaderSerializer(serializers.ModelSerializer):
+    user = UserShortSerializer(read_only=True)
+    floor = FloorShortSerializer(read_only=True)
+
+    class Meta:
+        model = FloorLeader
+        fields = ["id", "floor", "user"]
+
+
+class AttendanceRecordSerializer(serializers.ModelSerializer):
+    student = StudentShortSerializer(read_only=True)
+    student_id = serializers.PrimaryKeyRelatedField(
+        queryset=Student.objects.all(),
+        source="student",
+        write_only=True
+    )
+
+    class Meta:
+        model = AttendanceRecord
+        fields = ["id", "session", "student", "student_id", "status", "created_at"]
+        read_only_fields = ["id", "created_at", "student"]
+
+
+class AttendanceSessionSafeSerializer(serializers.ModelSerializer):
+    floor = FloorShortSerializer(read_only=True)
+    leader = FloorLeaderSerializer(read_only=True)
+    date = serializers.DateField(read_only=True)
+    records = AttendanceRecordSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = AttendanceSession
+        fields = ["id", "date", "floor", "leader", "records"]
+
+
+class AttendanceSessionSerializer(serializers.ModelSerializer):
+    floor = serializers.CharField(source="floor.name", read_only=True)
+    leader = serializers.CharField(source="leader.user.username", read_only=True)
+    date = serializers.DateField(read_only=True, format="%Y-%m-%d")
+
+    class Meta:
+        model = AttendanceSession
+        fields = ["id", "date", "floor", "leader", "created_at", "records"]
+        read_only_fields = ["id", "date", "floor", "leader", "created_at", "records"]
+
+    def create(self, validated_data):
+        """
+        Yangi sessiya faqat request.user sardor bo'lsa yaratiladi
+        """
+        request = self.context.get("request")
+        user = request.user
+
+        # ✅ Foydalanuvchi FloorLeader ekanini tekshiramiz
+        try:
+            leader = FloorLeader.objects.select_related("floor").get(user=user)
+        except FloorLeader.DoesNotExist:
+            raise serializers.ValidationError("❌ Siz qavat sardori emassiz!")
+
+        today = timezone.now().date()
+
+        # ✅ Bugungi kunda shu qavat uchun sessiya allaqachon bormi?
+        if AttendanceSession.objects.filter(date=today, floor=leader.floor).exists():
+            raise serializers.ValidationError("❌ Bugungi kunda ushbu qavat uchun sessiya allaqachon yaratilgan!")
+
+        # ✅ Session yaratish
+        session = AttendanceSession.objects.create(
+            floor=leader.floor,
+            leader=leader,
+        )
+
+        # ✅ Shu qavatdagi barcha studentlar uchun AttendanceRecord yaratish
+        students = Student.objects.filter(room__floor=leader.floor).only("id")
+        records = [
+            AttendanceRecord(session=session, student=student, status=AttendanceRecord.Status.ABSENT)
+            for student in students
+        ]
+        AttendanceRecord.objects.bulk_create(records)
+
+        return session
+
+
+class AttendanceRecordUpdateItemSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    student_id = serializers.IntegerField()
+    status = serializers.ChoiceField(choices=AttendanceRecord.Status.choices)
+
+
+class AttendanceRecordBulkUpdateSerializer(serializers.Serializer):
+    records = serializers.ListField(child=AttendanceRecordUpdateItemSerializer())
+
+
+class CollectionRecordSerializer(serializers.ModelSerializer):
+    student = StudentShortSerializer(read_only=True)
+    student_id = serializers.PrimaryKeyRelatedField(
+        queryset=Student.objects.all(),
+        source="student",
+        write_only=True
+    )
+
+    class Meta:
+        model = CollectionRecord
+        fields = ["id", "collection", "student", "student_id", "status"]
+        read_only_fields = ["id", "student"]
+
+
+class CollectionSafeSerializer(serializers.ModelSerializer):
+    floor = FloorShortSerializer(read_only=True)
+    leader = FloorLeaderSerializer(read_only=True)
+    records = CollectionRecordSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Collection
+        fields = ["id", "title", "amount", "description", "deadline", "floor", "leader", "records", "created_at"]
+        read_only_fields = ["id", "floor", "leader", "records", "created_at"]
+
+
+class CollectionSerializer(serializers.ModelSerializer):
+    floor = serializers.CharField(source="floor.name", read_only=True)
+    leader = serializers.CharField(source="leader.user.username", read_only=True)
+    records = CollectionRecordSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Collection
+        fields = ["id", "title", "amount", "description", "deadline", "floor", "leader", "records", "created_at"]
+        read_only_fields = ["id", "floor", "leader", "records", "created_at"]
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        user = request.user
+
+        # ✅ Foydalanuvchi FloorLeader ekanini tekshirish
+        try:
+            leader = FloorLeader.objects.get(user=user)
+        except FloorLeader.DoesNotExist:
+            raise serializers.ValidationError("❌ Faqat qavat sardori yig‘im yaratishi mumkin!")
+
+        # ✅ Collection yaratish
+        collection = Collection.objects.create(
+            leader=leader,
+            floor=leader.floor,
+            **validated_data
+        )
+
+        # ✅ Shu qavatdagi barcha studentlar uchun CollectionRecord yaratish
+        students = Student.objects.filter(room__floor=leader.floor).only("id")
+        records = [
+            CollectionRecord(collection=collection, student=student, status=CollectionRecord.Status.UNPAID)
+            for student in students
+        ]
+        CollectionRecord.objects.bulk_create(records)
+
+        return collection
+
+
+class CollectionRecordUpdateItemSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    student_id = serializers.IntegerField()
+    status = serializers.ChoiceField(choices=CollectionRecord.Status.choices)
+
+
+class CollectionRecordBulkUpdateSerializer(serializers.Serializer):
+    """Collection recordlarni bulk update qilish uchun"""
+    records = serializers.ListField(child=CollectionRecordUpdateItemSerializer())

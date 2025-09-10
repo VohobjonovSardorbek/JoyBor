@@ -1,8 +1,6 @@
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, University, Dormitory, Floor, Room, Student, Application, Payment, Province, District, \
-    DormitoryImage, Amenity, Task, Apartment, ApartmentImage, Notification, UserNotification, Like, \
-    ApplicationNotification, UserProfile
+from .models import *
 from django.core.exceptions import ValidationError
 from django import forms
 
@@ -95,4 +93,9 @@ admin.site.register(UserNotification)
 admin.site.register(Like)
 admin.site.register(ApplicationNotification)
 admin.site.register(UserProfile)
+admin.site.register(FloorLeader)
+admin.site.register(AttendanceSession)
+admin.site.register(AttendanceRecord)
+admin.site.register(Collection)
+admin.site.register(CollectionRecord)
 
