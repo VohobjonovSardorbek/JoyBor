@@ -1797,7 +1797,7 @@ class AttendanceSessionListAPIView(ListAPIView):
 
 class AttendanceSessionCreateAPIView(CreateAPIView):
     serializer_class = AttendanceSessionSerializer
-    permission_classes = [IsFloorLeader, IsDormitoryAdmin]
+    permission_classes = [IsFloorLeader]
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):
@@ -1809,7 +1809,6 @@ class AttendanceSessionCreateAPIView(CreateAPIView):
         return AttendanceSession.objects.filter(floor=leader.floor).prefetch_related('records__student')
 
     def perform_create(self, serializer):
-        # create logikasi serializer ichida yozilgan
         serializer.save()
 
 
@@ -1842,7 +1841,7 @@ class AttendanceRecordBulkUpdateAPIView(APIView):
     permission_classes = [IsFloorLeader]
 
     @swagger_auto_schema(
-        request_body=AttendanceRecordBulkUpdateSerializer,  # ❌ many=True emas
+        request_body=AttendanceRecordBulkUpdateSerializer,
         responses={
             200: openapi.Response(
                 description="Bulk update muvaffaqiyatli yakunlandi",
@@ -1860,9 +1859,9 @@ class AttendanceRecordBulkUpdateAPIView(APIView):
         }
     )
     def patch(self, request, session_id, *args, **kwargs):
-        serializer = AttendanceRecordBulkUpdateSerializer(data=request.data)  # ❌ many=True emas
+        serializer = AttendanceRecordBulkUpdateSerializer(data=request.data)
         if serializer.is_valid():
-            records = serializer.validated_data['records']  # ✅ endi ['records'] dan olinadi
+            records = serializer.validated_data['records']
             updated_records = []
 
             try:
@@ -1936,9 +1935,8 @@ class FloorLeaderDetailAPIView(RetrieveDestroyAPIView):
     def perform_destroy(self, instance):
         user = instance.user
         super().perform_destroy(instance)
-        # Optional: downgrade role if no other leaderships
         if not FloorLeader.objects.filter(user=user).exists() and getattr(user, 'role', None) == 'floor_leader':
-            user.role = 'student'  # or leave as is depending on business rules
+            user.role = 'student'
             user.save(update_fields=['role'])
 
 
@@ -1951,7 +1949,6 @@ class CollectionListAPIView(ListAPIView):
             return Collection.objects.none()
 
         user = self.request.user
-        # Admin: show all collections in own dormitory via same endpoint
         if user.role == 'admin':
             try:
                 dormitory = Dormitory.objects.get(admin=user)
@@ -1959,7 +1956,6 @@ class CollectionListAPIView(ListAPIView):
                 return Collection.objects.none()
             return Collection.objects.filter(floor__dormitory=dormitory).order_by('-created_at')
 
-        # Floor leader: only own collections
         try:
             leader = FloorLeader.objects.get(user=user)
         except FloorLeader.DoesNotExist:
@@ -1970,7 +1966,7 @@ class CollectionListAPIView(ListAPIView):
 class CollectionCreateAPIView(CreateAPIView):
     queryset = Collection.objects.all()
     serializer_class = CollectionSerializer
-    permission_classes = [IsFloorLeader, IsDormitoryAdmin]
+    permission_classes = [IsFloorLeader]
 
 
 class CollectionDetailAPIView(RetrieveUpdateDestroyAPIView):
@@ -1986,7 +1982,6 @@ class CollectionDetailAPIView(RetrieveUpdateDestroyAPIView):
             return Collection.objects.none()
 
         user = self.request.user
-        # Admin can only retrieve; restrict updates/deletes to leaders
         if self.request.method == 'GET' and user.role == 'admin':
             try:
                 dormitory = Dormitory.objects.get(admin=user)
@@ -2002,18 +1997,9 @@ class CollectionDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 
 class CollectionRecordBulkUpdateAPIView(APIView):
-    """Collection recordlarni bulk update qilish"""
     permission_classes = [IsFloorLeader]
 
     @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter(
-                'collection_id',
-                openapi.IN_PATH,
-                description="Collection ID (yo‘l parametri)",
-                type=openapi.TYPE_INTEGER
-            )
-        ],
         request_body=CollectionRecordBulkUpdateSerializer,
         responses={
             200: openapi.Response(
@@ -2033,12 +2019,12 @@ class CollectionRecordBulkUpdateAPIView(APIView):
         }
     )
     def patch(self, request, collection_id, *args, **kwargs):
-        serializer = CollectionRecordBulkUpdateSerializer(data=request.data)  # ❌ many=True emas
+        serializer = CollectionRecordBulkUpdateSerializer(data=request.data)
         if serializer.is_valid():
-            records = serializer.validated_data['records']  # ✅ ['records'] dan olinadi
+            records = serializer.validated_data['records']
             updated_records = []
 
-            # ✅ Collection mavjudligini tekshirish
+            #  Collection mavjudligini tekshirish
             try:
                 collection = Collection.objects.get(id=collection_id)
             except Collection.DoesNotExist:
@@ -2047,7 +2033,7 @@ class CollectionRecordBulkUpdateAPIView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # ✅ Foydalanuvchi sardorligini tekshirish
+            #  Foydalanuvchi sardorligini tekshirish
             try:
                 leader = FloorLeader.objects.get(user=request.user)
             except FloorLeader.DoesNotExist:
@@ -2062,7 +2048,7 @@ class CollectionRecordBulkUpdateAPIView(APIView):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            # ✅ Recordlarni yangilash
+            #  Recordlarni yangilash
             for record in records:
                 try:
                     record_obj = CollectionRecord.objects.get(

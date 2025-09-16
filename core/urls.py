@@ -112,14 +112,12 @@ urlpatterns += [
     path('application_notifications/<int:pk>/', ApplicationNotificationRetrieveAPIView.as_view(), name='application-notification-retrieve'),
     path('application_notifications/mark-read/', ApplicationNotificationMarkAsReadAPIView.as_view(), name='application-notification-mark-read'),
     
-    # Like endpoints
     path('likes/toggle/', LikeToggleAPIView.as_view(), name='like-toggle'),
     path('likes/status/', LikeStatusAPIView.as_view(), name='like-status'),
     path('likes/my/', UserLikesAPIView.as_view(), name='user-likes'),
 
     path('apartment_images/', ApartmentImageListCreateAPIView.as_view(), name='apartment-image-list-create'),
     path('apartment_images/<int:pk>/', ApartmentImageDetailAPIView.as_view(), name='apartment-image-detail'),
-
 
     path('leaders/', FloorLeaderListCreateAPIView.as_view(), name='leader-list-create'),
     path('leaders/<int:pk>/', FloorLeaderDetailAPIView.as_view(), name='leader-detail'),

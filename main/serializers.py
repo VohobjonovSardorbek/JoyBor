@@ -993,7 +993,6 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
         if not user or not user.is_authenticated:
             raise serializers.ValidationError("Authentication required")
 
-        # Only dormitory admin can create leader for own dormitory
         floor = attrs.get('floor')
         if not floor:
             raise serializers.ValidationError("Floor talab qilinadi")
@@ -1025,10 +1024,9 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
         }
 
         user = User.objects.create_user(**user_data)
-        #
-        phone = validated_data.pop('phone', None)
 
-        # FloorLeader yaratish
+        validated_data.pop('phone', None)
+
         validated_data['user'] = user
         return super().create(validated_data)
 
@@ -1040,6 +1038,21 @@ class FloorLeaderSerializer(serializers.ModelSerializer):
     class Meta:
         model = FloorLeader
         fields = ["id", "floor", "user"]
+
+
+class FloorLeaderShortSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(read_only=True)
+    floor = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = FloorLeader
+        fields = ["id", "floor", "user"]
+
+    def get_user(self, obj):
+        return getattr(obj, 'user', None)
+
+    def get_floor(self, obj):
+        return getattr(obj, 'floor', None)
 
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
@@ -1056,15 +1069,53 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "student"]
 
 
+class AttendanceRecordShortSerializer(serializers.ModelSerializer):
+    student = StudentShortSerializer(read_only=True)
+
+    class Meta:
+        model = AttendanceRecord
+        fields = ["id", "student", "status"]
+
+
+class RoomGroupedSerializer(serializers.Serializer):
+    room_id = serializers.IntegerField()
+    room_name = serializers.CharField()
+    students = AttendanceRecordShortSerializer(many=True)
+
+
 class AttendanceSessionSafeSerializer(serializers.ModelSerializer):
     floor = FloorShortSerializer(read_only=True)
-    leader = FloorLeaderSerializer(read_only=True)
+    leader = FloorLeaderShortSerializer(read_only=True)
     date = serializers.DateField(read_only=True)
-    records = AttendanceRecordSerializer(many=True, read_only=True)
+    rooms = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceSession
-        fields = ["id", "date", "floor", "leader", "records"]
+        fields = ["id", "date", "floor", "leader", "rooms"]
+
+    def get_rooms(self, obj):
+        # sessionga tegishli barcha recordlarni olib kelamiz
+        records = obj.records.select_related("student__room").all().order_by("student__room__name")
+
+        grouped = {}
+        for record in records:
+            room = record.student.room
+            if not room:
+                continue
+            if room.id not in grouped:
+                grouped[room.id] = {
+                    "room_id": room.id,
+                    "room_name": room.name,
+                    "students": []
+                }
+            grouped[room.id]["students"].append(record)
+
+        # endi serializer orqali qaytaramiz
+        serializer = RoomGroupedSerializer(
+            sorted(grouped.values(), key=lambda x: x["room_name"]),
+            many=True
+        )
+        return serializer.data
 
 
 class AttendanceSessionSerializer(serializers.ModelSerializer):
@@ -1078,31 +1129,29 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "date", "floor", "leader", "created_at", "records"]
 
     def create(self, validated_data):
-        """
-        Yangi sessiya faqat request.user sardor bo'lsa yaratiladi
-        """
+
         request = self.context.get("request")
         user = request.user
 
-        # ✅ Foydalanuvchi FloorLeader ekanini tekshiramiz
+        #  Foydalanuvchi FloorLeader ekanini tekshiramiz
         try:
             leader = FloorLeader.objects.select_related("floor").get(user=user)
         except FloorLeader.DoesNotExist:
-            raise serializers.ValidationError("❌ Siz qavat sardori emassiz!")
+            raise serializers.ValidationError(" Siz qavat sardori emassiz!")
 
         today = timezone.now().date()
 
-        # ✅ Bugungi kunda shu qavat uchun sessiya allaqachon bormi?
+        #  Bugungi kunda shu qavat uchun sessiya allaqachon bormi?
         if AttendanceSession.objects.filter(date=today, floor=leader.floor).exists():
-            raise serializers.ValidationError("❌ Bugungi kunda ushbu qavat uchun sessiya allaqachon yaratilgan!")
+            raise serializers.ValidationError(" Bugungi kunda ushbu qavat uchun davomat allaqachon yaratilgan!")
 
-        # ✅ Session yaratish
+        #  Session yaratish
         session = AttendanceSession.objects.create(
             floor=leader.floor,
             leader=leader,
         )
 
-        # ✅ Shu qavatdagi barcha studentlar uchun AttendanceRecord yaratish
+        # Shu qavatdagi barcha studentlar uchun AttendanceRecord yaratish
         students = Student.objects.filter(room__floor=leader.floor).only("id")
         records = [
             AttendanceRecord(session=session, student=student, status=AttendanceRecord.Status.ABSENT)
@@ -1137,15 +1186,53 @@ class CollectionRecordSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "student"]
 
 
+class CollectionRecordShortSerializer(serializers.ModelSerializer):
+    student = StudentShortSerializer(read_only=True)
+
+    class Meta:
+        model = CollectionRecord
+        fields = ["id", "student", "status"]
+
+
+class RoomGroupedSerializer(serializers.Serializer):
+    room_id = serializers.IntegerField()
+    room_name = serializers.CharField()
+    students = CollectionRecordShortSerializer(many=True)
+
+
 class CollectionSafeSerializer(serializers.ModelSerializer):
     floor = FloorShortSerializer(read_only=True)
-    leader = FloorLeaderSerializer(read_only=True)
-    records = CollectionRecordSerializer(many=True, read_only=True)
+    leader = FloorLeaderShortSerializer(read_only=True)
+    rooms = serializers.SerializerMethodField()
 
     class Meta:
         model = Collection
-        fields = ["id", "title", "amount", "description", "deadline", "floor", "leader", "records", "created_at"]
-        read_only_fields = ["id", "floor", "leader", "records", "created_at"]
+        fields = ["id", "title", "amount", "description", "deadline", "floor", "leader", "rooms", "created_at"]
+        read_only_fields = ["id", "floor", "leader", "rooms", "created_at"]
+
+    def get_rooms(self, obj):
+        # sessionga tegishli barcha recordlarni olib kelamiz
+        records = obj.records.select_related("student__room").all().order_by("student__room__name")
+
+        grouped = {}
+        for record in records:
+            room = record.student.room
+            if not room:
+                continue
+            if room.id not in grouped:
+                grouped[room.id] = {
+                    "room_id": room.id,
+                    "room_name": room.name,
+                    "students": []
+                }
+            grouped[room.id]["students"].append(record)
+
+        # serializer orqali qaytarish
+        serializer = RoomGroupedSerializer(
+            sorted(grouped.values(), key=lambda x: x["room_name"]),
+            many=True
+        )
+        return serializer.data
 
 
 class CollectionSerializer(serializers.ModelSerializer):
@@ -1162,20 +1249,20 @@ class CollectionSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         user = request.user
 
-        # ✅ Foydalanuvchi FloorLeader ekanini tekshirish
+        # Foydalanuvchi FloorLeader ekanini tekshirish
         try:
             leader = FloorLeader.objects.get(user=user)
         except FloorLeader.DoesNotExist:
-            raise serializers.ValidationError("❌ Faqat qavat sardori yig‘im yaratishi mumkin!")
+            raise serializers.ValidationError("Faqat qavat sardori yig‘im yaratishi mumkin!")
 
-        # ✅ Collection yaratish
+        # Collection yaratish
         collection = Collection.objects.create(
             leader=leader,
             floor=leader.floor,
             **validated_data
         )
 
-        # ✅ Shu qavatdagi barcha studentlar uchun CollectionRecord yaratish
+        # Shu qavatdagi barcha studentlar uchun CollectionRecord yaratish
         students = Student.objects.filter(room__floor=leader.floor).only("id")
         records = [
             CollectionRecord(collection=collection, student=student, status=CollectionRecord.Status.UNPAID)
