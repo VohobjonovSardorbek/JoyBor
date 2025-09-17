@@ -131,6 +131,8 @@ urlpatterns += [
     path('attendance-sessions/create/', AttendanceSessionCreateAPIView.as_view(), name='attendance-session-create'),
     path('attendance-sessions/<int:pk>/', AttendanceSessionDetailAPIView.as_view(), name='attendance-session-detail'),
     path("attendance-records/<int:session_id>/bulk-update/", AttendanceRecordBulkUpdateAPIView.as_view(), name="attendance-bulk-update"),
+
+    path('statistic-for-leader/', StatisticForLeaderAPIView.as_view(), name='statistic-for-leader'),
 ]
 
 urlpatterns += [

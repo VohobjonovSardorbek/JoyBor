@@ -996,12 +996,10 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     first_name = serializers.CharField(write_only=True, required=False)
     last_name = serializers.CharField(write_only=True, required=False)
-    email = serializers.EmailField(write_only=True, required=False)
-    phone = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = FloorLeader
-        fields = ["id", "floor", "username", "password", "first_name", "last_name", "email", "phone"]
+        fields = ["id", "floor", "username", "password", "first_name", "last_name"]
 
     def validate(self, attrs):
         request = self.context.get('request')
@@ -1035,13 +1033,11 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
             'password': validated_data.pop('password'),
             'first_name': validated_data.pop('first_name', ''),
             'last_name': validated_data.pop('last_name', ''),
-            'email': validated_data.pop('email', ''),
             'role': 'floor_leader'
         }
 
         user = User.objects.create_user(**user_data)
 
-        validated_data.pop('phone', None)
 
         validated_data['user'] = user
         return super().create(validated_data)
@@ -1298,3 +1294,11 @@ class CollectionRecordUpdateItemSerializer(serializers.Serializer):
 class CollectionRecordBulkUpdateSerializer(serializers.Serializer):
     """Collection recordlarni bulk update qilish uchun"""
     records = serializers.ListField(child=CollectionRecordUpdateItemSerializer())
+
+
+class StatisticForLeaderSerializer(serializers.Serializer):
+    active_students = serializers.IntegerField()
+    collection_degree = serializers.IntegerField()
+    today_attendance = serializers.IntegerField()
+
+

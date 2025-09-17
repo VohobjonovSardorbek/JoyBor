@@ -1780,7 +1780,7 @@ class AttendanceSessionListAPIView(ListAPIView):
     def get_queryset(self):
         user = self.request.user
 
-        if user.role == 'admin' and hasattr(user, "dormitory") and user.dormitory:
+        if user.role == 'admin':
             return AttendanceSession.objects.filter(
                 floor__dormitory__admin=user
             )
@@ -1822,7 +1822,7 @@ class AttendanceSessionDetailAPIView(RetrieveAPIView):
             return AttendanceSession.objects.none()
         user = self.request.user
 
-        if user.role == 'admin' and hasattr(user, "dormitory") and user.dormitory:
+        if user.role == 'admin':
             return AttendanceSession.objects.filter(
                 floor__dormitory__admin=user
             )
@@ -2078,3 +2078,43 @@ class CollectionRecordBulkUpdateAPIView(APIView):
             return Response({"updated": updated_records}, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class StatisticForLeaderAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        leader = FloorLeader.objects.get(user=request.user)
+
+        # 1. Active students
+        active_students = Student.objects.filter(floor=leader.floor).count()
+
+        # 2. Collection degree
+        records = CollectionRecord.objects.filter(collection__floor=leader.floor)
+        total = records.count()
+        paid = records.filter(status=CollectionRecord.Status.PAID).count()
+        collection_degree = int((paid / total) * 100) if total > 0 else 0
+
+        # 3. Today attendance
+        today_session = AttendanceSession.objects.filter(
+            floor=leader.floor,
+            date=now().date()
+        ).first()
+        if today_session:
+            total_att = today_session.records.count()
+            present = today_session.records.filter(status=AttendanceRecord.Status.PRESENT).count()
+            today_attendance = int((present / total_att) * 100) if total_att > 0 else 0
+        else:
+            today_attendance = 0
+
+        # 4. Open tasks (example)
+        # open_tasks = Application.objects.filter(floor=leader.floor, status="open").count()
+
+        data = {
+            "active_students": active_students,
+            "collection_degree": collection_degree,
+            "today_attendance": today_attendance,
+        }
+
+        serializer = StatisticForLeaderSerializer(data)
+        return Response(serializer.data)
