@@ -435,7 +435,7 @@ class AttendanceSession(models.Model):
 
 class AttendanceRecord(models.Model):
     class Status(models.TextChoices):
-        PRESENT = "Hozir", "Hozir"
+        PRESENT = "Bor", "Bor"
         LATE = "Kech", "Kech"
         ABSENT = "Yo‘q", "Yo‘q"
 
