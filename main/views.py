@@ -2102,7 +2102,7 @@ class StatisticForLeaderAPIView(APIView):
         ).first()
         if today_session:
             total_att = today_session.records.count()
-            present = today_session.records.filter(status=AttendanceRecord.Status.PRESENT).count()
+            present = today_session.records.filter(status=AttendanceRecord.Status.IN).count()
             today_attendance = int((present / total_att) * 100) if total_att > 0 else 0
         else:
             today_attendance = 0
