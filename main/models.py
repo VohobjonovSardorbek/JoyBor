@@ -435,9 +435,8 @@ class AttendanceSession(models.Model):
 
 class AttendanceRecord(models.Model):
     class Status(models.TextChoices):
-        PRESENT = "Bor", "Bor"
-        LATE = "Kech", "Kech"
-        ABSENT = "Yo‘q", "Yo‘q"
+        IN = 'in', 'in'
+        OUT = 'out', 'out'
 
     session = models.ForeignKey(
         AttendanceSession,
@@ -452,7 +451,7 @@ class AttendanceRecord(models.Model):
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.PRESENT
+        default=Status.IN
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

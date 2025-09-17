@@ -1137,8 +1137,8 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AttendanceSession
-        fields = ["id", "date", "floor", "leader", "created_at", "records"]
-        read_only_fields = ["id", "date", "floor", "leader", "created_at", "records"]
+        fields = ["id", "date", "floor", "leader", "created_at"]
+        read_only_fields = ["id", "date", "floor", "leader", "created_at"]
 
     def create(self, validated_data):
 
@@ -1166,7 +1166,7 @@ class AttendanceSessionSerializer(serializers.ModelSerializer):
         # Shu qavatdagi barcha studentlar uchun AttendanceRecord yaratish
         students = Student.objects.filter(room__floor=leader.floor).only("id")
         records = [
-            AttendanceRecord(session=session, student=student, status=AttendanceRecord.Status.ABSENT)
+            AttendanceRecord(session=session, student=student, status=AttendanceRecord.Status.IN)
             for student in students
         ]
         AttendanceRecord.objects.bulk_create(records)

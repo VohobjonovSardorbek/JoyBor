@@ -1848,8 +1848,8 @@ class AttendanceRecordBulkUpdateAPIView(APIView):
                 examples={
                     "application/json": {
                         "updated": [
-                            {"id": 10, "student_id": 5, "status": "bor"},
-                            {"id": 11, "student_id": 6, "status": "kech"}
+                            {"id": 10, "student_id": 5, "status": "in"},
+                            {"id": 11, "student_id": 6, "status": "out"}
                         ]
                     }
                 }
