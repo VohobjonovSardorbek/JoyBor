@@ -488,3 +488,18 @@ class CollectionRecord(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.collection} ({self.status})"
+
+
+class TaskForLeader(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Kutilmoqda'),
+        ('IN_PROGRESS', 'Jarayonda'),
+        ('COMPLETED', 'Bajarilgan'),
+    )
+    status = models.CharField(choices=STATUS_CHOICES, max_length=20, default='PENDING')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks_fpr_leaders')
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.description

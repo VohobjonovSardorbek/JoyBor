@@ -133,14 +133,20 @@ urlpatterns += [
     path("attendance-records/<int:session_id>/bulk-update/", AttendanceRecordBulkUpdateAPIView.as_view(), name="attendance-bulk-update"),
 
     path('statistic-for-leader/', StatisticForLeaderAPIView.as_view(), name='statistic-for-leader'),
+
+    path('tasks-for-leaders/', TaskForLeaderListAPIView.as_view(), name='task-for-leaders-list'),
+    path('tasks-for-leaders/create/', TaskForLeaderCreateAPIView.as_view(), name='task-for-leader-create'),
+    path('tasks-for-leaders/<int:pk>/', TaskForLeaderDetailAPIView.as_view(), name='task-for-leader-detail'),
+
+    path('student-me/', StudentMeAPIView.as_view(), name='student-me'),
 ]
 
 urlpatterns += [
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', token_refresh),
-    path('auth/', include('dj_rest_auth.urls')),  # login/logout/password
-    path('auth/google/', GoogleLoginAPIView.as_view(), name='google-login'),
-    path('auth/registration/', include('dj_rest_auth.registration.urls')),  # email-based reg
-    path('google/', include('allauth.socialaccount.urls')),  # google login
+    # path('auth/', include('dj_rest_auth.urls')),  # login/logout/password
+    # path('auth/google/', GoogleLoginAPIView.as_view(), name='google-login'),
+    # path('auth/registration/', include('dj_rest_auth.registration.urls')),  # email-based reg
+    # path('google/', include('allauth.socialaccount.urls')),  # google login
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

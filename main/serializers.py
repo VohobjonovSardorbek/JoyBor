@@ -1038,7 +1038,6 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(**user_data)
 
-
         validated_data['user'] = user
         return super().create(validated_data)
 
@@ -1100,10 +1099,24 @@ class AttendanceSessionSafeSerializer(serializers.ModelSerializer):
     leader = FloorLeaderShortSerializer(read_only=True)
     date = serializers.DateField(read_only=True)
     rooms = serializers.SerializerMethodField()
+    exist_students = serializers.SerializerMethodField()
+    absent_students = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceSession
-        fields = ["id", "date", "floor", "leader", "rooms"]
+        fields = ["id", "date", "floor", "leader", "rooms", 'exist_students', 'absent_students']
+
+    def get_exist_students(self, obj):
+        records = getattr(obj, "records", None)
+        if records is None:
+            return 0
+        return records.filter(status="in").count()
+
+    def get_absent_students(self, obj):
+        records = getattr(obj, "records", None)
+        if records is None:
+            return 0
+        return records.filter(status="out").count()
 
     def get_rooms(self, obj):
         # sessionga tegishli barcha recordlarni olib kelamiz
@@ -1300,5 +1313,43 @@ class StatisticForLeaderSerializer(serializers.Serializer):
     active_students = serializers.IntegerField()
     collection_degree = serializers.IntegerField()
     today_attendance = serializers.IntegerField()
+
+
+class TaskForLeaderSafeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskForLeader
+        fields = ["id", "status", 'description', 'user', 'created_at']
+
+
+class TaskForLeaderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskForLeader
+        fields = ["id", "status", 'description']
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        user = request.user
+        validated_data["user"] = user
+
+        return super().create(validated_data)
+
+class RoomMateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = ["id", "name", "last_name", "room"]   # kerakli fieldlarni yozing
+
+class ForStudentSerializer(serializers.ModelSerializer):
+    roommates = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Student
+        fields = "__all__"   # yoki kerakli fieldlar + roommates
+
+    def get_roommates(self, obj):
+        if not obj.room:
+            return []  # agar room yo'q bo'lsa bo'sh array qaytadi
+        # Shu xonadagi boshqa studentlar (o'zi chiqmasligi uchun exclude)
+        roommates = Student.objects.filter(room=obj.room).exclude(id=obj.id)
+        return RoomMateSerializer(roommates, many=True).data
 
 

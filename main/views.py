@@ -2118,3 +2118,46 @@ class StatisticForLeaderAPIView(APIView):
 
         serializer = StatisticForLeaderSerializer(data)
         return Response(serializer.data)
+
+
+class TaskForLeaderListAPIView(ListAPIView):
+    serializer_class = TaskForLeaderSafeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return TaskForLeader.objects.none()
+
+        user = self.request.user
+        return TaskForLeader.objects.filter(user=user)
+
+
+class TaskForLeaderCreateAPIView(CreateAPIView):
+    serializer_class = TaskForLeaderSerializer
+    permission_classes = [IsFloorLeader]
+    queryset = TaskForLeader.objects.all()
+
+
+class TaskForLeaderDetailAPIView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsFloorLeader]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return TaskForLeader.objects.none()
+
+        user = self.request.user
+        return TaskForLeader.objects.filter(user=user)
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return TaskForLeaderSafeSerializer
+        return TaskForLeaderSerializer
+
+class StudentMeAPIView(RetrieveAPIView):
+    permission_classes = [IsStudent]
+    serializer_class = ForStudentSerializer
+
+    def get_object(self):
+        return Student.objects.get(user=self.request.user)
+
+
