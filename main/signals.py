@@ -1,9 +1,9 @@
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 # from channels.layers import get_channel_layer
 # from asgiref.sync import async_to_sync
-from .models import Application, Payment, User, UserProfile, Notification, UserNotification, ApplicationNotification, Task, Floor, Room
+from .models import Application, Payment, User, UserProfile, Notification, UserNotification, ApplicationNotification, Task, Floor, Room, Student
 from django.utils import timezone
 
 from rest_framework import serializers
@@ -159,3 +159,51 @@ def check_room_name_uniqueness(sender, instance, **kwargs):
     else:  # Yangi yaratish holatida
         if Room.objects.filter(floor=instance.floor, name=instance.name).exists():
             raise serializers.ValidationError(f"'{instance.name}' nomli xona bu qavatda allaqachon mavjud!")
+
+
+
+ROOM_STATUS_AVAILABLE = 'AVAILABLE'
+ROOM_STATUS_PARTIALLY = 'PARTIALLY_OCCUPIED'
+ROOM_STATUS_FULL = 'FULLY_OCCUPIED'
+PLACEMENT_STATUS_DONE = 'Joylashdi'
+PLACEMENT_STATUS_PENDING = 'Qabul qilindi'
+
+
+def update_room_status(room: Room):
+    if not room:
+        return
+    current_count = room.students.count()
+    room.currentOccupancy = current_count
+
+    if current_count == 0:
+        room.status = ROOM_STATUS_AVAILABLE
+    elif current_count < room.capacity:
+        room.status = ROOM_STATUS_PARTIALLY
+    else:
+        room.status = ROOM_STATUS_FULL
+
+    room.save(update_fields=['currentOccupancy', 'status'])
+
+
+@receiver(post_save, sender=Student)
+def update_room_and_status_on_save(sender, instance, created, **kwargs):
+    """
+    Student saqlanganda xona bandligi va placement_status avtomatik yangilansin
+    """
+    # placement_status
+    if instance.floor and instance.room:
+        if instance.placement_status != PLACEMENT_STATUS_DONE:
+            Student.objects.filter(pk=instance.pk).update(placement_status=PLACEMENT_STATUS_DONE)
+
+    # room status
+    if instance.room:
+        update_room_status(instance.room)
+
+
+@receiver(post_delete, sender=Student)
+def update_room_on_delete(sender, instance, **kwargs):
+    """
+    Student o‘chirib tashlanganda xonani yangilash
+    """
+    if instance.room:
+        update_room_status(instance.room)

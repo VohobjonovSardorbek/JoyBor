@@ -659,7 +659,6 @@ class StudentCreateAPIView(CreateAPIView):
         serializer = super().get_serializer(*args, **kwargs)
 
         dormitory = _get_dormitory_for_user_or_404(self.request.user)
-
         floors_qs = Floor.objects.filter(dormitory=dormitory)
         rooms_qs = Room.objects.filter(floor__in=floors_qs).exclude(status=ROOM_STATUS_FULL)
 
@@ -703,24 +702,6 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
                 return Student.objects.none()
 
         return Student.objects.filter(dormitory=dormitory).select_related('room', 'floor')
-
-    def perform_destroy(self, instance):
-        room = instance.room
-
-        with transaction.atomic():
-            super().perform_destroy(instance)
-
-            new_occupancy = room.students.count()
-            room.currentOccupancy = new_occupancy
-
-            if new_occupancy == 0:
-                room.status = ROOM_STATUS_AVAILABLE
-            elif new_occupancy < room.capacity:
-                room.status = ROOM_STATUS_PARTIALLY
-            else:
-                room.status = ROOM_STATUS_FULL
-
-            room.save(update_fields=['currentOccupancy', 'status'])
 
     def perform_update(self, serializer):
         with transaction.atomic():
@@ -2093,7 +2074,7 @@ class StatisticForLeaderAPIView(APIView):
         records = CollectionRecord.objects.filter(collection__floor=leader.floor)
         total = records.count()
         paid = records.filter(status=CollectionRecord.Status.PAID).count()
-        collection_degree = int((paid / total) * 100) if total > 0 else 0
+        collection_degree = f"{paid}/{total}" if total > 0 else "0/0"
 
         # 3. Today attendance
         today_session = AttendanceSession.objects.filter(
@@ -2103,17 +2084,18 @@ class StatisticForLeaderAPIView(APIView):
         if today_session:
             total_att = today_session.records.count()
             present = today_session.records.filter(status=AttendanceRecord.Status.IN).count()
-            today_attendance = int((present / total_att) * 100) if total_att > 0 else 0
+            today_attendance = f"{present}/{total_att}" if total_att > 0 else "0/0"
         else:
-            today_attendance = 0
+            today_attendance = "0/0"
 
         # 4. Open tasks (example)
-        # open_tasks = Application.objects.filter(floor=leader.floor, status="open").count()
+        open_tasks = TaskForLeader.objects.filter(user=request.user, status="PENDING").count()
 
         data = {
             "active_students": active_students,
             "collection_degree": collection_degree,
             "today_attendance": today_attendance,
+            "open_tasks": open_tasks,
         }
 
         serializer = StatisticForLeaderSerializer(data)

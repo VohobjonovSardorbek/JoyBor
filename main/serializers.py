@@ -551,10 +551,12 @@ class StudentSerializer(serializers.ModelSerializer):
             attrs['passport'] = passport
 
         room = attrs.get('room')
-        if room and room.currentOccupancy >= room.capacity:
-            raise serializers.ValidationError({
-                'room': "Bu xona to'lgan, unga talaba qo'sha olmaysiz."
-            })
+        if room:
+            current_count = room.students.count()
+            if current_count >= room.capacity:
+                raise serializers.ValidationError({
+                    'room': "Bu xona to'lgan, unga talaba qo'sha olmaysiz."
+                })
 
         return attrs
 
@@ -640,20 +642,6 @@ class StudentSerializer(serializers.ModelSerializer):
                     application_instance.passport_image_second.file,
                     save=True
                 )
-
-        # Xona bandligini yangilash
-        if student.room:
-            room = student.room
-            room.currentOccupancy = room.students.count()
-
-            if room.currentOccupancy == 0:
-                room.status = 'AVAILABLE'
-            elif room.currentOccupancy < room.capacity:
-                room.status = 'PARTIALLY_OCCUPIED'
-            else:
-                room.status = 'FULLY_OCCUPIED'
-
-            room.save()
 
         # Agar arizasiz yaratilgan bo'lsa, notification yuborish
         if not application_instance and student_user:
@@ -1311,8 +1299,9 @@ class CollectionRecordBulkUpdateSerializer(serializers.Serializer):
 
 class StatisticForLeaderSerializer(serializers.Serializer):
     active_students = serializers.IntegerField()
-    collection_degree = serializers.IntegerField()
-    today_attendance = serializers.IntegerField()
+    collection_degree = serializers.CharField()
+    today_attendance = serializers.CharField()
+    open_tasks = serializers.IntegerField()
 
 
 class TaskForLeaderSafeSerializer(serializers.ModelSerializer):
@@ -1340,16 +1329,27 @@ class RoomMateSerializer(serializers.ModelSerializer):
 
 class ForStudentSerializer(serializers.ModelSerializer):
     roommates = serializers.SerializerMethodField()
+    payments = serializers.SerializerMethodField()
+    province = ProvinceSerializer(read_only=True)
+    district = DistrictSerializer(read_only=True)
+    dormitory = DormitoryShortSerializer(read_only=True)
+    floor = FloorShortSerializer(read_only=True)
+    room = RoomShortSerializer(read_only=True)
+    user = UserShortSerializer(read_only=True)
 
     class Meta:
         model = Student
-        fields = "__all__"   # yoki kerakli fieldlar + roommates
+        fields = "__all__"
+        read_only_fields = ["id", "user"]
 
     def get_roommates(self, obj):
         if not obj.room:
-            return []  # agar room yo'q bo'lsa bo'sh array qaytadi
-        # Shu xonadagi boshqa studentlar (o'zi chiqmasligi uchun exclude)
+            return []
         roommates = Student.objects.filter(room=obj.room).exclude(id=obj.id)
         return RoomMateSerializer(roommates, many=True).data
+
+    def get_payments(self, obj):
+        payments = obj.payments.all()
+        return PaymentShortSerializer(payments, many=True).data
 
 
