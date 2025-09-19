@@ -1353,3 +1353,30 @@ class ForStudentSerializer(serializers.ModelSerializer):
         return PaymentShortSerializer(payments, many=True).data
 
 
+class DutyScheduleSafeSerializer(serializers.ModelSerializer):
+    room = RoomShortSerializer(read_only=True)
+    floor = FloorShortSerializer(read_only=True)
+
+    class Meta:
+        model = DutySchedule
+        fields = ['id', 'floor', 'room', 'date', 'created_at']
+
+
+class DutyScheduleSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = DutySchedule
+        fields = ['id', 'room', 'date', 'created_at']
+        read_only_fields = ["id", "created_at"]
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        user = request.user
+
+        leader = getattr(user, "floor_leader", None)
+        if leader is None:
+            raise serializers.ValidationError("Siz floor leader emassiz.")
+
+        validated_data['floor'] = leader.floor
+        return super().create(validated_data)
+

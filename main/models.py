@@ -503,3 +503,13 @@ class TaskForLeader(models.Model):
 
     def __str__(self):
         return self.description
+
+
+class DutySchedule(models.Model):
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, related_name='schedules')
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='schedules')
+    date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.floor} - {self.room} - {self.date}"

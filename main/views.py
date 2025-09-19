@@ -1900,7 +1900,7 @@ class FloorLeaderListCreateAPIView(ListCreateAPIView):
         return FloorLeader.objects.filter(floor__dormitory=dormitory).select_related('user', 'floor')
 
 
-class FloorLeaderDetailAPIView(RetrieveDestroyAPIView):
+class FloorLeaderDetailAPIView(RetrieveUpdateDestroyAPIView):
     serializer_class = FloorLeaderSerializer
     permission_classes = [IsDormitoryAdmin]
 
@@ -2070,20 +2070,23 @@ class StatisticForLeaderAPIView(APIView):
         # 1. Active students
         active_students = Student.objects.filter(floor=leader.floor).count()
 
-        # 2. Collection degree
-        records = CollectionRecord.objects.filter(collection__floor=leader.floor)
-        total = records.count()
-        paid = records.filter(status=CollectionRecord.Status.PAID).count()
-        collection_degree = f"{paid}/{total}" if total > 0 else "0/0"
+        # 2. Collection degree -> oxirgi collectionni olish
+        last_collection = Collection.objects.filter(floor=leader.floor).order_by("-created_at").first()
+        if last_collection:
+            records = CollectionRecord.objects.filter(collection=last_collection)
+            total = records.count()
+            paid = records.filter(status=CollectionRecord.Status.PAID).count()
+            collection_degree = f"{paid}/{total}" if total > 0 else "0/0"
+        else:
+            collection_degree = "0/0"
 
-        # 3. Today attendance
-        today_session = AttendanceSession.objects.filter(
-            floor=leader.floor,
-            date=now().date()
-        ).first()
-        if today_session:
-            total_att = today_session.records.count()
-            present = today_session.records.filter(status=AttendanceRecord.Status.IN).count()
+        # 3. Today (or last) attendance -> oxirgi sessiyani olish
+        last_session = AttendanceSession.objects.filter(
+            floor=leader.floor
+        ).order_by("-date").first()
+        if last_session:
+            total_att = last_session.records.count()
+            present = last_session.records.filter(status=AttendanceRecord.Status.IN).count()
             today_attendance = f"{present}/{total_att}" if total_att > 0 else "0/0"
         else:
             today_attendance = "0/0"
@@ -2141,5 +2144,46 @@ class StudentMeAPIView(RetrieveAPIView):
 
     def get_object(self):
         return Student.objects.get(user=self.request.user)
+    
+    
+class DutyScheduleListAPIView(ListAPIView):
+    serializer_class = DutyScheduleSafeSerializer
+    permission_classes = [IsFloorLeader]
+    
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return DutySchedule.objects.none()
+        
+        user = self.request.user
+        
+        leader = user.floor_leader
+        if leader:
+            return DutySchedule.objects.filter(floor=leader.floor)
+        return DutySchedule.objects.none()
 
+
+class DutyScheduleCreateAPIView(CreateAPIView):
+    serializer_class = DutyScheduleSerializer
+    permission_classes = [IsFloorLeader]
+    queryset = DutySchedule.objects.all()
+
+
+class DutyScheduleDetailAPIView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsFloorLeader]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return DutySchedule.objects.none()
+
+        user = self.request.user
+
+        leader = user.floor_leader
+        if leader:
+            return DutySchedule.objects.filter(floor=leader.floor)
+        return DutySchedule.objects.none()
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return DutyScheduleSafeSerializer
+        return DutyScheduleSerializer
 

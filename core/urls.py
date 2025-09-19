@@ -139,6 +139,10 @@ urlpatterns += [
     path('tasks-for-leaders/<int:pk>/', TaskForLeaderDetailAPIView.as_view(), name='task-for-leader-detail'),
 
     path('student-me/', StudentMeAPIView.as_view(), name='student-me'),
+
+    path('duty_schedules/', DutyScheduleListAPIView.as_view(), name='duty-schedule-list'),
+    path('duty_schedules/create/', DutyScheduleCreateAPIView.as_view(), name='duty-schedule-create'),
+    path('duty_schedules/<int:pk>/', DutyScheduleDetailAPIView.as_view(), name='duty-schedule-detail'),
 ]
 
 urlpatterns += [
