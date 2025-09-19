@@ -170,10 +170,9 @@ PLACEMENT_STATUS_PENDING = 'Qabul qilindi'
 
 
 def update_room_status(room: Room):
+    """Xonadagi currentOccupancy va statusni yangilaydi"""
     if not room:
         return
-
-    # agar related_name='students' bo'lmasa student_set ishlatish kerak
     current_count = room.students.count()
     room.currentOccupancy = current_count
 
@@ -187,18 +186,42 @@ def update_room_status(room: Room):
     room.save(update_fields=['currentOccupancy', 'status'])
 
 
+@receiver(pre_save, sender=Student)
+def track_old_room(sender, instance, **kwargs):
+    """Student room o'zgarganda eski roomni ham yangilash uchun"""
+    if instance.pk:
+        try:
+            old_instance = Student.objects.get(pk=instance.pk)
+            instance._old_room = old_instance.room
+        except Student.DoesNotExist:
+            instance._old_room = None
+
+
 @receiver(post_save, sender=Student)
-def update_room_and_status_on_save(sender, instance, created, **kwargs):
+def update_room_on_save(sender, instance, created, **kwargs):
+    """
+    Student qo'shilganda yoki update qilinganda xonani yangilash
+    """
+    # placement_status
     if instance.floor and instance.room:
         if instance.placement_status != PLACEMENT_STATUS_DONE:
-            Student.objects.filter(pk=instance.pk).update(placement_status=PLACEMENT_STATUS_DONE)
+            Student.objects.filter(pk=instance.pk).update(
+                placement_status=PLACEMENT_STATUS_DONE
+            )
 
+    # Eski room yangilanishi kerak (agar student ko'chirilgan bo'lsa)
+    old_room = getattr(instance, "_old_room", None)
+    if old_room and old_room != instance.room:
+        update_room_status(old_room)
+
+    # Yangi room yangilanishi kerak
     if instance.room:
-        transaction.on_commit(lambda: update_room_status(instance.room))
+        update_room_status(instance.room)
 
 
 @receiver(post_delete, sender=Student)
 def update_room_on_delete(sender, instance, **kwargs):
+    """Student o‘chirib tashlanganda xonani yangilash"""
     if instance.room:
-        transaction.on_commit(lambda: update_room_status(instance.room))
+        update_room_status(instance.room)
 
