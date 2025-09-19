@@ -5,7 +5,7 @@ from django.dispatch import receiver
 # from asgiref.sync import async_to_sync
 from .models import Application, Payment, User, UserProfile, Notification, UserNotification, ApplicationNotification, Task, Floor, Room, Student
 from django.utils import timezone
-
+from django.db import transaction
 from rest_framework import serializers
 
 
@@ -172,6 +172,8 @@ PLACEMENT_STATUS_PENDING = 'Qabul qilindi'
 def update_room_status(room: Room):
     if not room:
         return
+
+    # agar related_name='students' bo'lmasa student_set ishlatish kerak
     current_count = room.students.count()
     room.currentOccupancy = current_count
 
@@ -187,23 +189,16 @@ def update_room_status(room: Room):
 
 @receiver(post_save, sender=Student)
 def update_room_and_status_on_save(sender, instance, created, **kwargs):
-    """
-    Student saqlanganda xona bandligi va placement_status avtomatik yangilansin
-    """
-    # placement_status
     if instance.floor and instance.room:
         if instance.placement_status != PLACEMENT_STATUS_DONE:
             Student.objects.filter(pk=instance.pk).update(placement_status=PLACEMENT_STATUS_DONE)
 
-    # room status
     if instance.room:
-        update_room_status(instance.room)
+        transaction.on_commit(lambda: update_room_status(instance.room))
 
 
 @receiver(post_delete, sender=Student)
 def update_room_on_delete(sender, instance, **kwargs):
-    """
-    Student o‘chirib tashlanganda xonani yangilash
-    """
     if instance.room:
-        update_room_status(instance.room)
+        transaction.on_commit(lambda: update_room_status(instance.room))
+
