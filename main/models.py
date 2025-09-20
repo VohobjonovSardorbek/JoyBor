@@ -78,7 +78,7 @@ class Dormitory(models.Model):
     address = models.CharField(max_length=255)
     university = models.ForeignKey(University, on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
-    admin = models.ForeignKey(User, on_delete=models.CASCADE)
+    admin = models.ForeignKey(User, on_delete=models.CASCADE, related_name='dormitory')
     month_price = models.IntegerField(blank=True, null=True)
     year_price = models.IntegerField(blank=True, null=True)
     latitude = models.FloatField(blank=True, null=True)

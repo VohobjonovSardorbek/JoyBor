@@ -347,7 +347,7 @@ class FloorDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 class RoomListAPIView(ListAPIView):
     serializer_class = RoomSafeSerializer
-    permission_classes = [IsDormitoryAdmin]
+    permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         manual_parameters=[
@@ -367,8 +367,16 @@ class RoomListAPIView(ListAPIView):
             return Room.objects.none()
 
         user = self.request.user
-        dormitory = Dormitory.objects.get(admin=user)
-        queryset = Room.objects.filter(floor__dormitory=dormitory)
+
+        if hasattr(user, "dormitory"):
+            dormitory = Dormitory.objects.get(admin=user)
+            queryset = Room.objects.filter(floor__dormitory=dormitory)
+
+        elif hasattr(user, "floor_leader"):
+            queryset = Room.objects.filter(floor=user.floor_leader.floor)
+
+        else:
+            return Room.objects.none()  # boshqa userlarga bo‘sh
 
         floor_id = self.request.query_params.get('floor')
         if floor_id and floor_id.isdigit():
