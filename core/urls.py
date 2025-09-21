@@ -143,6 +143,8 @@ urlpatterns += [
     path('duty_schedules/', DutyScheduleListAPIView.as_view(), name='duty-schedule-list'),
     path('duty_schedules/create/', DutyScheduleCreateAPIView.as_view(), name='duty-schedule-create'),
     path('duty_schedules/<int:pk>/', DutyScheduleDetailAPIView.as_view(), name='duty-schedule-detail'),
+    path("check-username/", UsernameCheckAPIView.as_view(), name="check-username"),
+
 ]
 
 urlpatterns += [

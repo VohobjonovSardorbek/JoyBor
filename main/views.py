@@ -2198,3 +2198,15 @@ class DutyScheduleDetailAPIView(RetrieveUpdateDestroyAPIView):
             return DutyScheduleSafeSerializer
         return DutyScheduleSerializer
 
+
+class UsernameCheckAPIView(APIView):
+    def get(self, request, *args, **kwargs):
+        username = request.query_params.get("username", None)
+        if not username:
+            return Response({"detail": "Username kiritilmagan"}, status=status.HTTP_400_BAD_REQUEST)
+
+        exists = User.objects.filter(username=username).exists()
+        return Response({
+            "username": username,
+            "available": not exists
+        })

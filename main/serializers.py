@@ -500,7 +500,7 @@ class StudentSafeSerializer(serializers.ModelSerializer):
                   'direction', 'dormitory', 'floor', 'room', 'phone', 'picture', 'privilege',
                   'payments', 'total_payment', 'accepted_date', 'group', 'passport', 'course',
                   'gender', 'placement_status', 'passport_image_first', 'passport_image_second', 'status',
-                  'privilege_share']
+                  'privilege_share', 'document']
         read_only_fields = ['accepted_date']
 
     def get_picture(self, obj):
@@ -992,6 +992,8 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(write_only=True)  # 🔹 Email qo‘shildi
     first_name = serializers.CharField(write_only=True, required=False)
     last_name = serializers.CharField(write_only=True, required=False)
+    phone_number = serializers.CharField(write_only=True, required=False)
+    picture = serializers.ImageField(write_only=True, required=False)
 
     class Meta:
         model = FloorLeader
