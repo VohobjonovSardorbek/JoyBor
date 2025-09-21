@@ -1895,6 +1895,7 @@ class AttendanceRecordBulkUpdateAPIView(APIView):
 
 class FloorLeaderListCreateAPIView(ListCreateAPIView):
     permission_classes = [IsDormitoryAdmin]
+    parser_classes = [MultiPartParser, FormParser]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
