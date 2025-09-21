@@ -523,6 +523,7 @@ class StudentSerializer(serializers.ModelSerializer):
     picture = serializers.ImageField(required=False)
     passport_image_first = serializers.ImageField(required=False)
     passport_image_second = serializers.ImageField(required=False)
+    document = serializers.FileField(required=False)
     # Arizadan ma'lumotlarni (shu jumladan rasm maydonlarini) ko'chirish uchun
     application_id = serializers.IntegerField(write_only=True, required=False)
 
@@ -532,7 +533,7 @@ class StudentSerializer(serializers.ModelSerializer):
             'id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
             'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date',
             'passport', 'group', 'course', 'gender', 'passport_image_first', 'passport_image_second',
-            'privilege_share', 'application_id', 'user'
+            'privilege_share', 'application_id', 'user', 'document'
         ]
         read_only_fields = ['accepted_date', 'user']
         extra_kwargs = {
@@ -640,6 +641,12 @@ class StudentSerializer(serializers.ModelSerializer):
                 student.passport_image_second.save(
                     application_instance.passport_image_second.name,
                     application_instance.passport_image_second.file,
+                    save=True
+                )
+            if not student.document and application_instance.document:
+                student.document.save(
+                    application_instance.document.name,
+                    application_instance.document.file,
                     save=True
                 )
 
@@ -982,12 +989,13 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
     """Floor leader yaratish uchun - user ma'lumotlari bilan birga"""
     username = serializers.CharField(write_only=True)
     password = serializers.CharField(write_only=True, min_length=8)
+    email = serializers.EmailField(write_only=True)  # 🔹 Email qo‘shildi
     first_name = serializers.CharField(write_only=True, required=False)
     last_name = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = FloorLeader
-        fields = ["id", "floor", "username", "password", "first_name", "last_name"]
+        fields = ["id", "floor", "username", "password", "email", "first_name", "last_name"]
 
     def validate(self, attrs):
         request = self.context.get('request')
@@ -1007,10 +1015,15 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
         if floor.dormitory_id != dormitory.id:
             raise serializers.ValidationError("Faqat o'zingizning yotoqxonangiz qavati uchun sardor tayinlaysiz")
 
-        # Username unique bo'lishini tekshirish
+        # Username unique bo‘lishini tekshirish
         username = attrs.get('username')
         if User.objects.filter(username=username).exists():
             raise serializers.ValidationError("Bu username allaqachon mavjud")
+
+        # Email unique bo‘lishini tekshirish 🔹
+        email = attrs.get('email')
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError("Bu email allaqachon mavjud")
 
         return attrs
 
@@ -1019,6 +1032,7 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
         user_data = {
             'username': validated_data.pop('username'),
             'password': validated_data.pop('password'),
+            'email': validated_data.pop('email'),  # 🔹 Email qo‘shildi
             'first_name': validated_data.pop('first_name', ''),
             'last_name': validated_data.pop('last_name', ''),
             'role': 'floor_leader'

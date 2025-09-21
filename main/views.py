@@ -368,16 +368,19 @@ class RoomListAPIView(ListAPIView):
 
         user = self.request.user
 
-        if hasattr(user, "dormitory"):
-            dormitory = Dormitory.objects.get(admin=user)
+        # 🔹 Agar foydalanuvchi Dormitory admin bo‘lsa
+        dormitory = Dormitory.objects.filter(admin=user).first()
+        if dormitory:
             queryset = Room.objects.filter(floor__dormitory=dormitory)
 
+        # 🔹 Agar foydalanuvchi Floor leader bo‘lsa
         elif hasattr(user, "floor_leader"):
             queryset = Room.objects.filter(floor=user.floor_leader.floor)
 
         else:
-            return Room.objects.none()  # boshqa userlarga bo‘sh
+            return Room.objects.none()
 
+        # 🔹 Qo‘shimcha filter
         floor_id = self.request.query_params.get('floor')
         if floor_id and floor_id.isdigit():
             queryset = queryset.filter(floor_id=int(floor_id))

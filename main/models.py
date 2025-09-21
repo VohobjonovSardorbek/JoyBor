@@ -186,6 +186,7 @@ class Student(models.Model):
     picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True)  # yangi
     passport_image_first = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     passport_image_second = models.ImageField(upload_to='passport_image/', blank=True, null=True)
+    document = models.FileField(upload_to='documents/', blank=True, null=True)
     privilege = models.BooleanField(default=False)
     privilege_share = models.PositiveIntegerField(default=0)
     accepted_date = models.DateTimeField(auto_now_add=True)
