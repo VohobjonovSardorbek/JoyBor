@@ -986,18 +986,21 @@ class LikeCreateSerializer(serializers.ModelSerializer):
 
 
 class FloorLeaderCreateSerializer(serializers.ModelSerializer):
-    """Floor leader yaratish uchun - user ma'lumotlari bilan birga"""
+    """Floor leader yaratish uchun - user ma'lumotlari va profil bilan birga"""
     username = serializers.CharField(write_only=True)
     password = serializers.CharField(write_only=True, min_length=8)
-    email = serializers.EmailField(write_only=True)  # 🔹 Email qo‘shildi
+    email = serializers.EmailField(write_only=True)
     first_name = serializers.CharField(write_only=True, required=False)
     last_name = serializers.CharField(write_only=True, required=False)
-    phone_number = serializers.CharField(write_only=True, required=False)
-    picture = serializers.ImageField(write_only=True, required=False)
+    phone = serializers.CharField(write_only=True, required=False)   # 🔹 UserProfile uchun
+    image = serializers.ImageField(write_only=True, required=False)  # 🔹 UserProfile uchun
 
     class Meta:
         model = FloorLeader
-        fields = ["id", "floor", "username", "password", "email", "first_name", "last_name"]
+        fields = [
+            "id", "floor", "username", "password", "email",
+            "first_name", "last_name", "phone", "image"
+        ]
 
     def validate(self, attrs):
         request = self.context.get('request')
@@ -1017,30 +1020,37 @@ class FloorLeaderCreateSerializer(serializers.ModelSerializer):
         if floor.dormitory_id != dormitory.id:
             raise serializers.ValidationError("Faqat o'zingizning yotoqxonangiz qavati uchun sardor tayinlaysiz")
 
-        # Username unique bo‘lishini tekshirish
-        username = attrs.get('username')
-        if User.objects.filter(username=username).exists():
+        # Username unique
+        if User.objects.filter(username=attrs.get('username')).exists():
             raise serializers.ValidationError("Bu username allaqachon mavjud")
 
-        # Email unique bo‘lishini tekshirish 🔹
-        email = attrs.get('email')
-        if User.objects.filter(email=email).exists():
+        # Email unique
+        if User.objects.filter(email=attrs.get('email')).exists():
             raise serializers.ValidationError("Bu email allaqachon mavjud")
 
         return attrs
 
     def create(self, validated_data):
-        # User yaratish
+        phone = validated_data.pop("phone", None)
+        image = validated_data.pop("image", None)
+
+        # 🔹 Avval User yaratamiz
         user_data = {
             'username': validated_data.pop('username'),
             'password': validated_data.pop('password'),
-            'email': validated_data.pop('email'),  # 🔹 Email qo‘shildi
+            'email': validated_data.pop('email'),
             'first_name': validated_data.pop('first_name', ''),
             'last_name': validated_data.pop('last_name', ''),
             'role': 'floor_leader'
         }
-
         user = User.objects.create_user(**user_data)
+
+        # 🔹 So‘ng profil yaratamiz
+        UserProfile.objects.create(
+            user=user,
+            phone=phone,
+            image=image
+        )
 
         validated_data['user'] = user
         return super().create(validated_data)
