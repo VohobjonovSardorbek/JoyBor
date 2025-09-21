@@ -2201,6 +2201,29 @@ class DutyScheduleDetailAPIView(RetrieveUpdateDestroyAPIView):
 
 
 class UsernameCheckAPIView(APIView):
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                "username",
+                openapi.IN_QUERY,
+                description="Tekshiriladigan username",
+                type=openapi.TYPE_STRING,
+                required=True,
+            )
+        ],
+        responses={
+            200: openapi.Response(
+                description="Natija",
+                examples={
+                    "application/json": {
+                        "username": "ali",
+                        "available": True
+                    }
+                }
+            ),
+            400: "Username kiritilmagan"
+        },
+    )
     def get(self, request, *args, **kwargs):
         username = request.query_params.get("username", None)
         if not username:
