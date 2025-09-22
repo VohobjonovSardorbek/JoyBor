@@ -87,6 +87,7 @@ def update_student_status_after_payment(sender, instance, **kwargs):
             # Xatolikni loglash mumkin
             print(f"Notification yaratishda xatolik: {e}")
 
+
 @receiver(post_save, sender=Notification)
 def create_user_notifications(sender, instance, created, **kwargs):
     if created:

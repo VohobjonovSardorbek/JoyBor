@@ -515,51 +515,18 @@ class StudentSafeSerializer(serializers.ModelSerializer):
         return sum(p.amount for p in obj.payments.filter(status='APPROVED'))
 
 
-class StudentSerializer(serializers.ModelSerializer):
-    province = serializers.PrimaryKeyRelatedField(queryset=Province.objects.all(), write_only=True, required=False)
-    district = serializers.PrimaryKeyRelatedField(queryset=District.objects.all(), write_only=True, required=False)
-    floor = serializers.PrimaryKeyRelatedField(queryset=Floor.objects.all(), write_only=True, required=False)
-    room = serializers.PrimaryKeyRelatedField(queryset=Room.objects.all(), write_only=True, required=False)
-    picture = serializers.ImageField(required=False)
-    passport_image_first = serializers.ImageField(required=False)
-    passport_image_second = serializers.ImageField(required=False)
-    document = serializers.FileField(required=False)
-    # Arizadan ma'lumotlarni (shu jumladan rasm maydonlarini) ko'chirish uchun
-    application_id = serializers.IntegerField(write_only=True, required=False)
+class StudentDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = '__all__'
+
+
+class StudentCreateSerializer(serializers.ModelSerializer):
+    application_id = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = Student
-        fields = [
-            'id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
-            'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date',
-            'passport', 'group', 'course', 'gender', 'passport_image_first', 'passport_image_second',
-            'privilege_share', 'application_id', 'user', 'document'
-        ]
-        read_only_fields = ['accepted_date', 'user']
-        extra_kwargs = {
-            'privilege': {'required': False},
-        }
-
-    def validate(self, attrs):
-        passport = attrs.get('passport')
-        if passport:
-            passport = passport.upper()
-            import re
-            if not re.match(r'^[A-Z]{2}\d{7}$', passport):
-                raise serializers.ValidationError({
-                    'passport_number': "Pasport raqami noto'g'ri. Masalan: AA1234567 formatida bo'lishi kerak."
-                })
-            attrs['passport'] = passport
-
-        room = attrs.get('room')
-        if room:
-            current_count = room.students.count()
-            if current_count >= room.capacity:
-                raise serializers.ValidationError({
-                    'room': "Bu xona to'lgan, unga talaba qo'sha olmaysiz."
-                })
-
-        return attrs
+        fields = ['id', 'application_id']  # faqat id va application_id frontendga kerak
 
     @transaction.atomic
     def create(self, validated_data):
@@ -573,30 +540,19 @@ class StudentSerializer(serializers.ModelSerializer):
         except Dormitory.DoesNotExist:
             raise serializers.ValidationError('Sizga yotoqxona biriktirilmagan')
 
-        validated_data['dormitory'] = dormitory
+        # application_id orqali arizani olish
+        application_id = validated_data.pop('application_id')
+        application = Application.objects.filter(id=application_id, dormitory=dormitory).first()
+        if not application:
+            raise serializers.ValidationError({
+                'application_id': 'Ariza topilmadi yoki sizning yotoqxonangizga tegishli emas.'
+            })
 
-        # Agar application_id yuborilgan bo'lsa
-        application_id = validated_data.pop('application_id', None)
-        application_instance = None
-        student_user = None
-
-        if application_id is not None:
-            application_instance = Application.objects.filter(id=application_id, dormitory=dormitory).first()
-            if not application_instance:
-                raise serializers.ValidationError({
-                    'application_id': 'Ariza topilmadi yoki sizning yotoqxonangizga tegishli emas.'
-                })
-
-            # Ariza egasining userini olish
-            if application_instance.user:
-                student_user = application_instance.user
-
-            # Rasmlarni validated_data ga emas, keyin .save() orqali yozamiz
-
-        # Agar ariza egasining useri yo'q bo'lsa, yangi user yaratish
+        # Student uchun user
+        student_user = application.user
         if not student_user:
             User = get_user_model()
-            username = validated_data.get('passport') or validated_data.get('phone')
+            username = application.passport or application.phone
             if not username:
                 raise serializers.ValidationError("Passport yoki telefon raqami talab qilinadi")
 
@@ -605,60 +561,101 @@ class StudentSerializer(serializers.ModelSerializer):
 
             student_user = User.objects.create_user(
                 username=username,
-                password=validated_data.get('name', 'default_password'),
+                password=application.name or 'default_password',
                 role='student',
-                email=f"{username}@example.com"  # vaqtinchalik email
+                email=f"{username}@example.com"
             )
 
-        validated_data['user'] = student_user
+        # Student obyektini yaratish
+        student = Student.objects.create(
+            user=student_user,
+            name=application.name,
+            last_name=application.last_name,
+            middle_name=application.middle_name,
+            province=application.province,
+            district=application.district,
+            faculty=application.faculty,
+            direction=application.direction,
+            dormitory=dormitory,
+            passport=application.passport,
+            group=application.group,
+            course=application.course,
+            gender='Erkak',  # Application da gender yo'q ekan, default qilyapman
+            phone=application.phone,
+            picture=application.user_image,
+            passport_image_first=application.passport_image_first,
+            passport_image_second=application.passport_image_second,
+            document=application.document,
+            privilege=False,
+            floor=None,   # doim null
+            room=None,    # doim null
+            placement_status='Qabul qilindi'
+        )
 
+        return student
+
+    def to_representation(self, instance):
+        # Studentni to‘liq serializer bilan qaytaramiz
+        return StudentDetailSerializer(instance).data
+
+
+class StudentUpdateSerializer(serializers.ModelSerializer):
+    province = serializers.PrimaryKeyRelatedField(queryset=Province.objects.all(), write_only=True, required=False)
+    district = serializers.PrimaryKeyRelatedField(queryset=District.objects.all(), write_only=True, required=False)
+    floor = serializers.PrimaryKeyRelatedField(queryset=Floor.objects.all(), write_only=True, required=False)
+    room = serializers.PrimaryKeyRelatedField(queryset=Room.objects.all(), write_only=True, required=False)
+    picture = serializers.ImageField(required=False)
+    passport_image_first = serializers.ImageField(required=False)
+    passport_image_second = serializers.ImageField(required=False)
+    document = serializers.FileField(required=False)
+
+    class Meta:
+        model = Student
+        fields = [
+            'id', 'name', 'last_name', 'middle_name', 'province', 'district', 'faculty',
+            'direction', 'floor', 'room', 'phone', 'picture', 'privilege', 'accepted_date',
+            'passport', 'group', 'course', 'gender', 'passport_image_first', 'passport_image_second',
+            'privilege_share', 'document'
+        ]
+        read_only_fields = ['accepted_date', 'user']
+
+    def validate(self, attrs):
+        passport = attrs.get('passport')
+        if passport:
+            passport = passport.upper()
+            import re
+            if not re.match(r'^[A-Z]{2}\d{7}$', passport):
+                raise serializers.ValidationError({
+                    'passport': "Pasport raqami noto'g'ri. Masalan: AA1234567 formatida bo'lishi kerak."
+                })
+            attrs['passport'] = passport
+
+        room = attrs.get('room')
+        if room:
+            current_count = room.students.count()
+            if current_count >= room.capacity:
+                raise serializers.ValidationError({
+                    'room': "Bu xona to'lgan, unga talaba qo'sha olmaysiz."
+                })
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        # oddiy fieldlarni yangilash
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        # floor/room holatiga qarab placement_status o‘zgaradi
         floor = validated_data.get('floor')
         room = validated_data.get('room')
 
         if floor and room:
-            validated_data['placement_status'] = 'Joylashdi'
+            instance.placement_status = 'Joylashdi'
         else:
-            validated_data['placement_status'] = 'Qabul qilindi'
+            instance.placement_status = 'Qabul qilindi'
 
-        # Talabani yaratamiz
-        student = super().create(validated_data)
-
-        # Application rasmlarini studentga ko‘chirish
-        if application_instance:
-            if not student.picture and application_instance.user_image:
-                student.picture.save(
-                    application_instance.user_image.name,
-                    application_instance.user_image.file,
-                    save=True
-                )
-            if not student.passport_image_first and application_instance.passport_image_first:
-                student.passport_image_first.save(
-                    application_instance.passport_image_first.name,
-                    application_instance.passport_image_first.file,
-                    save=True
-                )
-            if not student.passport_image_second and application_instance.passport_image_second:
-                student.passport_image_second.save(
-                    application_instance.passport_image_second.name,
-                    application_instance.passport_image_second.file,
-                    save=True
-                )
-            if not student.document and application_instance.document:
-                student.document.save(
-                    application_instance.document.name,
-                    application_instance.document.file,
-                    save=True
-                )
-
-        # Agar arizasiz yaratilgan bo'lsa, notification yuborish
-        if not application_instance and student_user:
-            ApplicationNotification.objects.create(
-                user=user,
-                message=f"Sizning yangi {validated_data.get('name')} ismli talabangizning ma'lumotlari: "
-                        f"login: {student_user.username}, parol: {validated_data.get('name', 'default_password')}"
-            )
-
-        return student
+        instance.save()
+        return instance
 
 
 class ApplicationSafeSerializer(serializers.ModelSerializer):

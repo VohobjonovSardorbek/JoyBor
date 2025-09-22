@@ -658,7 +658,7 @@ def _get_dormitory_for_user_or_404(user):
 
 
 class StudentCreateAPIView(CreateAPIView):
-    serializer_class = StudentSerializer
+    serializer_class = StudentCreateSerializer
     permission_classes = [IsDormitoryAdmin]
     queryset = Student.objects.all()
     parser_classes = [MultiPartParser, FormParser]
@@ -695,7 +695,7 @@ class StudentDetailAPIView(RetrieveUpdateDestroyAPIView):
     def get_serializer_class(self):
         if self.request.method == 'GET':
             return StudentSafeSerializer
-        return StudentSerializer
+        return StudentUpdateSerializer
 
     def get_queryset(self):
         if getattr(self, 'swagger_fake_view', False):

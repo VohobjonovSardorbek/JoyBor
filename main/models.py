@@ -169,21 +169,21 @@ class Student(models.Model):
     )
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='student', blank=True, null=True)
     name = models.CharField(max_length=120)
-    last_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
-    middle_name = models.CharField(max_length=120, blank=True, null=True)  # yangi
-    province = models.ForeignKey(Province, on_delete=models.CASCADE, default=1)  # yangi
-    district = models.ForeignKey(District, on_delete=models.CASCADE, default=1)  # yangi
+    last_name = models.CharField(max_length=120, blank=True, null=True)
+    middle_name = models.CharField(max_length=120, blank=True, null=True)
+    province = models.ForeignKey(Province, on_delete=models.CASCADE, default=1)
+    district = models.ForeignKey(District, on_delete=models.CASCADE, default=1)
     faculty = models.CharField(max_length=120, blank=True, null=True)
-    direction = models.CharField(max_length=120, blank=True, null=True)  # yangi
+    direction = models.CharField(max_length=120, blank=True, null=True)
     dormitory = models.ForeignKey(Dormitory, on_delete=models.CASCADE)
-    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, blank=True, null=True, related_name='students')  # yangi
+    floor = models.ForeignKey(Floor, on_delete=models.CASCADE, blank=True, null=True, related_name='students')
     passport = models.CharField(max_length=9, unique=True, blank=True, null=True)
     group = models.CharField(max_length=120, blank=True, null=True)
-    course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs')  # yangi
+    course = models.CharField(max_length=120, choices=COURSE_CHOICES, default='1-kurs')
     gender = models.CharField(max_length=120, choices=Gender_CHOICES, default='Erkak')
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='students', blank=True, null=True)
     phone = models.CharField(blank=True, null=True, max_length=25)
-    picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True)  # yangi
+    picture = models.ImageField(upload_to='student_pictures/', blank=True, null=True)
     passport_image_first = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     passport_image_second = models.ImageField(upload_to='passport_image/', blank=True, null=True)
     document = models.FileField(upload_to='documents/', blank=True, null=True)
@@ -345,7 +345,6 @@ class Notification(models.Model):
 
 
 class UserNotification(models.Model):
-    """Foydalanuvchiga yuborilgan bildirishnomalar"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_notifications')
     notification = models.ForeignKey(Notification, on_delete=models.CASCADE, related_name='recipients')
     is_read = models.BooleanField(default=False)
